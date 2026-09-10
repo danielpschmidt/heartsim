@@ -200,7 +200,7 @@
             </svg>
             <span id="floatingPauseText" class="hidden sm:inline">Pause</span>
           </button>
-          <button id="resetCameraBtn" class="p-2 rounded-lg glass-panel hover:bg-slate-800/80 text-slate-300 border border-slate-700 shadow-lg text-xs flex items-center gap-1 transition active:scale-95" title="Kamera zurücksetzen">
+          <button id="resetCameraBtn" class="p-2 rounded-lg glass-panel hover:bg-slate-800/80 text-slate-300 border border-slate-700 shadow-lg text-xs flex items-center gap-1 transition active:scale-95" title="Alles zurücksetzen (Kamera, Ansicht, Physiologie, Transparenz)">
             <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
             </svg>
@@ -223,6 +223,30 @@
           <div class="flex items-center gap-1">
             <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
             <span class="text-yellow-300 font-medium">Reizleitung</span>
+          </div>
+        </div>
+
+        <!-- Gefäss-Legende (rechts, dezent) -->
+        <div class="absolute top-16 right-3 glass-panel px-2.5 py-2 rounded-lg text-[12px] border border-slate-700/50 hidden lg:flex flex-col gap-1.5 z-10 pointer-events-none opacity-80">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+            <span class="text-slate-400">Arterien (O₂-reich)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
+            <span class="text-slate-400">Venen (O₂-arm)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-rose-600 shrink-0"></span>
+            <span class="text-slate-400">Koronararterie</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-blue-700 shrink-0"></span>
+            <span class="text-slate-400">Koronarvene</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-yellow-600 shrink-0"></span>
+            <span class="text-slate-400">Epikardfett</span>
           </div>
         </div>
 
@@ -610,6 +634,29 @@
         </div>
       </div>
     </div>
+
+    <div>
+      <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
+        <span>5. Transparenz</span>
+        <span class="text-[10px] text-cyan-400 font-normal">Durchblick</span>
+      </label>
+      <div class="space-y-2 text-xs">
+        <div class="p-2 rounded-lg bg-slate-900/80 border border-slate-800">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-slate-300">Venen & Arterien</span>
+            <span class="vessel-opacity-value text-cyan-300 font-mono text-[11px]">0%</span>
+          </div>
+          <input type="range" min="0" max="100" value="0" step="1" class="vessel-opacity-slider w-full accent-cyan-500">
+        </div>
+        <div class="p-2 rounded-lg bg-slate-900/80 border border-slate-800">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-slate-300">Restliches Gewebe</span>
+            <span class="tissue-opacity-value text-cyan-300 font-mono text-[11px]">0%</span>
+          </div>
+          <input type="range" min="0" max="100" value="0" step="1" class="tissue-opacity-slider w-full accent-cyan-500">
+        </div>
+      </div>
+    </div>
   </template>
 
   <!-- ================= JAVASCRIPT-ENGINE ================= -->
@@ -720,7 +767,9 @@
       afibTimer: 0,
       time: 0,
       tourStep: 0,
-      currentMobileTab: '3d'
+      currentMobileTab: '3d',
+      vesselOpacity: 0,
+      tissueOpacity: 0
     };
 
     const ACTIVITY_PRESETS = {
@@ -902,14 +951,20 @@
     let scene, camera, renderer, controls;
     let heartGroup, ventriclesGroup, atriaGroup, coronariesGroup, conductionGroup;
     let leftVentricle, rightVentricle, leftAtrium, rightAtrium, septumMesh;
+    let leftVentricleInner, rightVentricleInner, leftAtriumInner, rightAtriumInner;
+    let endocardiumMat;
+    let myocardiumMat, rightVentricleMat, atriaMat, septumMat, valveMat, leafletMat, fatMat;
+    let aortaMat, blueVesselMat, coronaryArtMat, coronaryVeinMat;
     let leftAuricle, rightAuricle;
     let aortaMesh, pulmonaryArteryMesh, venaCavaMesh;
     let aorticBranchesGroup;
     let mitralValve, tricuspidValve, aorticValve, pulmonaryValve;
+    let mitralLeaflets, tricuspidLeaflets, aorticLeaflets, pulmonaryLeaflets;
     let saNodeMesh, avNodeMesh, hisBundleMesh, rightBranchMesh, leftBranchMesh;
     let bloodParticles = [];
     let anatomicalPins = [];
     let cutawayPlane;
+    let myocardiumTexture, myocardiumBumpTexture;
 
     const anatomicalStructures = [
       {
@@ -1020,6 +1075,9 @@
       rimLight.position.set(2, 6, -8);
       scene.add(rimLight);
 
+      myocardiumTexture = generateMyocardiumTexture();
+      myocardiumBumpTexture = generateMyocardiumBumpTexture();
+
       buildRealisticHeartModel();
       buildConductionSystem();
       buildBloodFlowPathways();
@@ -1108,10 +1166,138 @@
           }
         }
 
+        // Universeller Feinschliff (alle Spezies): Der RV bildet anatomisch NIE die
+        // Herzspitze - er wird zur Basis hin verkürzt, damit ein einziger, gemeinsamer
+        // Apex entsteht statt zweier getrennter Kammer-"Enden".
+        if (!isLeft && ny < -0.05) {
+          const liftT = Math.min(1, (-ny - 0.05) / 0.95);
+          v.y *= 1.0 - liftT * 0.42;
+        }
+        // Der LV wölbt sich leicht zur Kammerscheidewand (RV-Seite) hin, damit beide
+        // Kammern ohne sichtbare Kerbe ineinander übergehen.
+        if (isLeft && v.x < -0.15) {
+          v.x *= 1.0 + Math.min(0.18, (-v.x - 0.15) * 0.6);
+        }
+
+        // Dezente organische Oberflächenwelligkeit statt perfekt glatter Kugelform
+        const theta = Math.atan2(v.z, v.x);
+        const wobble = Math.sin(theta * 3.0 + ny * 4.0) * 0.012 + Math.cos(theta * 5.0 - ny * 2.0) * 0.008;
+        v.x *= 1.0 + wobble;
+        v.z *= 1.0 + wobble;
+
         pos.setXYZ(i, v.x, v.y, v.z);
       }
       geo.computeVertexNormals();
       return geo;
+    }
+
+    // Prozedurale Myokard-Oberfläche: Faserstruktur (Diffuse) & Trabekel-Relief (Bump)
+    function generateMyocardiumTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 1024;
+      const ctx = canvas.getContext('2d');
+
+      const grad = ctx.createLinearGradient(0, 0, 1024, 1024);
+      grad.addColorStop(0, '#9c1c31');
+      grad.addColorStop(0.5, '#7d1526');
+      grad.addColorStop(1, '#5e0f1c');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 1024, 1024);
+
+      ctx.strokeStyle = 'rgba(190, 50, 70, 0.16)';
+      ctx.lineWidth = 2.2;
+      for (let i = -500; i < 1500; i += 7) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.bezierCurveTo(i + 160, 380, i - 90, 680, i + 210, 1024);
+        ctx.stroke();
+      }
+
+      for (let i = 0; i < 5000; i++) {
+        const x = Math.random() * 1024;
+        const y = Math.random() * 1024;
+        const r = Math.random() * 2.6 + 0.6;
+        ctx.fillStyle = Math.random() > 0.4 ? 'rgba(215, 60, 75, 0.10)' : 'rgba(35, 5, 10, 0.18)';
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(2, 2);
+      return texture;
+    }
+
+    function generateMyocardiumBumpTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#808080';
+      ctx.fillRect(0, 0, 512, 512);
+
+      for (let i = 0; i < 2200; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        const w = Math.random() * 22 + 4;
+        const h = Math.random() * 2 + 1;
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.22)';
+        ctx.fillRect(x, y, w, h);
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(2, 2);
+      return texture;
+    }
+
+    // Segelklappen: `count` fächerförmige Segel/Taschen, deren Spitze (Mittelpunkt der
+    // Kreis-Sektor-Geometrie) pro Frame entlang der lokalen Z-Achse verschoben wird, um
+    // ein Öffnen/Schließen ("Billowing") zu simulieren - statt eines starren Rings.
+    function createValveLeafletSet(radius, count, material, parentValveMesh) {
+      const group = new THREE.Group();
+      const sweep = (Math.PI * 2) / count;
+      const leaflets = [];
+      for (let i = 0; i < count; i++) {
+        const geo = new THREE.CircleGeometry(radius, 10, i * sweep + 0.02, sweep - 0.04);
+        const mesh = new THREE.Mesh(geo, material);
+        group.add(mesh);
+        leaflets.push(mesh);
+      }
+      parentValveMesh.add(group);
+      return leaflets;
+    }
+
+    function setLeafletTipOffset(leaflets, offset) {
+      if (!leaflets) return;
+      for (let i = 0; i < leaflets.length; i++) {
+        const posAttr = leaflets[i].geometry.attributes.position;
+        posAttr.setZ(0, offset);
+        posAttr.needsUpdate = true;
+      }
+    }
+
+    // Bündel leicht gespreizter Sehnenfäden zwischen einer Papillarmuskel-Spitze
+    // (origin) und der Klappenunterseite (target), statt einzelner gerader Fäden.
+    function createChordaeBundle(origin, target, count, material) {
+      const group = new THREE.Group();
+      for (let i = 0; i < count; i++) {
+        const spread = (i - (count - 1) / 2) * 0.032;
+        const mid = new THREE.Vector3(
+          (origin.x + target.x) / 2 + spread * 0.5,
+          (origin.y + target.y) / 2,
+          (origin.z + target.z) / 2 + spread
+        );
+        const end = new THREE.Vector3(target.x + spread, target.y, target.z + spread * 0.5);
+        const curve = new THREE.CatmullRomCurve3([origin.clone(), mid, end]);
+        const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 10, 0.009, 5, false), material);
+        group.add(tube);
+      }
+      return group;
     }
 
     function buildRealisticHeartModel() {
@@ -1130,51 +1316,92 @@
 
       const muscleOpacity = 0.98;
 
-      // Eleganter, reflexiver Medical-Material-Shader
-      const myocardiumMat = new THREE.MeshStandardMaterial({
+      // Eleganter, reflexiver Medical-Material-Shader mit Faser-/Trabekel-Relief & feuchtem Sheen
+      myocardiumMat = new THREE.MeshPhysicalMaterial({
         color: 0xb51e36,
-        roughness: 0.28,
-        metalness: 0.08,
-        opacity: muscleOpacity,
-        side: THREE.DoubleSide
-      });
-
-      const rightVentricleMat = new THREE.MeshStandardMaterial({
-        color: 0x9e172e,
-        roughness: 0.32,
-        metalness: 0.08,
-        opacity: muscleOpacity,
-        side: THREE.DoubleSide
-      });
-
-      const atriaMat = new THREE.MeshStandardMaterial({
-        color: 0x881427,
-        roughness: 0.4,
+        map: myocardiumTexture,
+        bumpMap: myocardiumBumpTexture,
+        bumpScale: 0.028,
+        roughness: 0.42,
         metalness: 0.05,
+        clearcoat: 0.25,
+        clearcoatRoughness: 0.35,
+        transparent: true,
         opacity: muscleOpacity,
         side: THREE.DoubleSide
       });
 
-      const septumMat = new THREE.MeshStandardMaterial({
-        color: 0x8e1528,
-        roughness: 0.35,
-        metalness: 0.06,
+      rightVentricleMat = new THREE.MeshPhysicalMaterial({
+        color: 0x9e172e,
+        map: myocardiumTexture,
+        bumpMap: myocardiumBumpTexture,
+        bumpScale: 0.026,
+        roughness: 0.46,
+        metalness: 0.05,
+        clearcoat: 0.22,
+        clearcoatRoughness: 0.38,
+        transparent: true,
+        opacity: muscleOpacity,
         side: THREE.DoubleSide
       });
 
-      const aortaMat = new THREE.MeshStandardMaterial({
+      atriaMat = new THREE.MeshPhysicalMaterial({
+        color: 0x881427,
+        map: myocardiumTexture,
+        bumpMap: myocardiumBumpTexture,
+        bumpScale: 0.018,
+        roughness: 0.5,
+        metalness: 0.04,
+        clearcoat: 0.2,
+        clearcoatRoughness: 0.4,
+        transparent: true,
+        opacity: muscleOpacity,
+        side: THREE.DoubleSide
+      });
+
+      septumMat = new THREE.MeshPhysicalMaterial({
+        color: 0x8e1528,
+        map: myocardiumTexture,
+        bumpMap: myocardiumBumpTexture,
+        bumpScale: 0.022,
+        roughness: 0.44,
+        metalness: 0.05,
+        clearcoat: 0.2,
+        clearcoatRoughness: 0.4,
+        transparent: true,
+        side: THREE.DoubleSide
+      });
+
+      // Endokard: glatte, helle Innenauskleidung der Herzhöhlen (sichtbar im Kammerschnitt)
+      endocardiumMat = new THREE.MeshPhysicalMaterial({
+        color: 0xf0c2bd,
+        roughness: 0.16,
+        metalness: 0.02,
+        clearcoat: 0.6,
+        clearcoatRoughness: 0.12,
+        transparent: true,
+        side: THREE.FrontSide
+      });
+
+      aortaMat = new THREE.MeshPhysicalMaterial({
         color: 0xdc2626,
         roughness: 0.2,
-        metalness: 0.16
+        metalness: 0.16,
+        clearcoat: 0.5,
+        clearcoatRoughness: 0.25,
+        transparent: true
       });
 
-      const blueVesselMat = new THREE.MeshStandardMaterial({
+      blueVesselMat = new THREE.MeshPhysicalMaterial({
         color: 0x1d4ed8,
         roughness: 0.22,
-        metalness: 0.16
+        metalness: 0.16,
+        clearcoat: 0.5,
+        clearcoatRoughness: 0.25,
+        transparent: true
       });
 
-      const fatMat = new THREE.MeshStandardMaterial({
+      fatMat = new THREE.MeshStandardMaterial({
         color: 0xd8b548,
         roughness: 0.55,
         metalness: 0.02,
@@ -1182,12 +1409,29 @@
         opacity: 0.72
       });
 
-      const valveMat = new THREE.MeshStandardMaterial({
+      // Anulus fibrosus (Klappenring): kräftiger, goldener Faserring
+      valveMat = new THREE.MeshPhysicalMaterial({
         color: 0xfef08a,
         emissive: 0xca8a04,
         emissiveIntensity: 0.35,
-        roughness: 0.25,
-        metalness: 0.4
+        roughness: 0.3,
+        metalness: 0.3,
+        clearcoat: 0.7,
+        clearcoatRoughness: 0.2,
+        transparent: true
+      });
+
+      // Klappensegel/-taschen: dünnes, perlmuttfarbenes Gewebe - bewusst anders als
+      // Ring (Gold) und Epikardfett (Ocker), damit beide im Kammerschnitt unterscheidbar bleiben
+      leafletMat = new THREE.MeshPhysicalMaterial({
+        color: 0xfaf3e6,
+        roughness: 0.4,
+        metalness: 0.0,
+        clearcoat: 0.5,
+        clearcoatRoughness: 0.3,
+        transparent: true,
+        opacity: 0.92,
+        side: THREE.DoubleSide
       });
 
       const chordaeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
@@ -1195,20 +1439,28 @@
       // 1. LINKER VENTRIKEL & HERZSPITZE
       const lvGeo = createSculptedVentricleGeo(STATE.species, true);
       leftVentricle = new THREE.Mesh(lvGeo, myocardiumMat);
-      leftVentricle.position.set(0.42, -0.45, 0.05);
-      leftVentricle.rotation.z = -0.22;
+      leftVentricle.position.set(0.34, -0.45, 0.02);
+      leftVentricle.rotation.z = -0.2;
       leftVentricle.rotation.y = 0.15;
       leftVentricle.userData = { id: 'lv' };
       ventriclesGroup.add(leftVentricle);
 
+      leftVentricleInner = new THREE.Mesh(lvGeo, endocardiumMat);
+      leftVentricleInner.scale.set(0.86, 0.86, 0.86);
+      leftVentricle.add(leftVentricleInner);
+
       // 2. RECHTER VENTRIKEL & CONUS ARTERIOSUS
       const rvGeo = createSculptedVentricleGeo(STATE.species, false);
       rightVentricle = new THREE.Mesh(rvGeo, rightVentricleMat);
-      rightVentricle.position.set(-0.68, -0.48, 0.42);
-      rightVentricle.rotation.z = 0.16;
+      rightVentricle.position.set(-0.52, -0.28, 0.38);
+      rightVentricle.rotation.z = 0.14;
       rightVentricle.rotation.y = -0.15;
       rightVentricle.userData = { id: 'rv' };
       ventriclesGroup.add(rightVentricle);
+
+      rightVentricleInner = new THREE.Mesh(rvGeo, endocardiumMat);
+      rightVentricleInner.scale.set(0.82, 0.82, 0.82);
+      rightVentricle.add(rightVentricleInner);
 
       // 3. KAMMERSCHEIDEWAND (SEPTUM)
       const septumGeo = new THREE.BoxGeometry(0.18, 1.8, 1.2);
@@ -1230,11 +1482,14 @@
       papMuscleRV.rotation.z = 0.25;
       ventriclesGroup.add(papMuscleRV);
 
-      for (let i = 0; i < 4; i++) {
-        const chord1 = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.45, 6), chordaeMat);
-        chord1.position.set(0.48 + (i - 1.5) * 0.04, -0.25, 0.15 + (i % 2) * 0.04);
-        ventriclesGroup.add(chord1);
-      }
+      // Sehnenfäden (Chordae tendineae): verbinden die Papillarmuskel-Spitzen mit der
+      // Unterseite der Segelklappen, statt frei schwebender, unverbundener Fäden.
+      ventriclesGroup.add(createChordaeBundle(
+        new THREE.Vector3(0.5, -0.35, 0.2), new THREE.Vector3(0.5, 0.08, -0.02), 5, chordaeMat
+      ));
+      ventriclesGroup.add(createChordaeBundle(
+        new THREE.Vector3(-0.55, -0.4, 0.35), new THREE.Vector3(-0.66, 0.02, 0.26), 5, chordaeMat
+      ));
 
       // 4. LINKER VORHOF & HERZOHR
       const laGeo = new THREE.SphereGeometry(0.88, 36, 36);
@@ -1243,6 +1498,10 @@
       leftAtrium.position.set(0.68, 1.05, -0.5);
       leftAtrium.userData = { id: 'la' };
       atriaGroup.add(leftAtrium);
+
+      leftAtriumInner = new THREE.Mesh(laGeo, endocardiumMat);
+      leftAtriumInner.scale.set(0.85, 0.85, 0.85);
+      leftAtrium.add(leftAtriumInner);
 
       const laAuricleGeo = new THREE.ConeGeometry(0.35, 0.72, 16);
       leftAuricle = new THREE.Mesh(laAuricleGeo, atriaMat);
@@ -1257,6 +1516,10 @@
       rightAtrium.position.set(-1.0, 0.92, 0.1);
       rightAtrium.userData = { id: 'ra' };
       atriaGroup.add(rightAtrium);
+
+      rightAtriumInner = new THREE.Mesh(raGeo, endocardiumMat);
+      rightAtriumInner.scale.set(0.85, 0.85, 0.85);
+      rightAtrium.add(rightAtriumInner);
 
       const raAuricleGeo = new THREE.ConeGeometry(0.38, 0.78, 16);
       rightAuricle = new THREE.Mesh(raAuricleGeo, atriaMat);
@@ -1337,27 +1600,31 @@
       pv4.rotation.x = Math.PI / 2.3;
       heartGroup.add(pv4);
 
-      // 10. HERZKLAPPEN
+      // 10. HERZKLAPPEN (Anulus-Ring + bewegliche Segel/Taschen)
       const valveGeo = new THREE.TorusGeometry(0.36, 0.045, 14, 28);
       mitralValve = new THREE.Mesh(valveGeo, valveMat);
       mitralValve.position.set(0.52, 0.38, -0.15);
       mitralValve.rotation.x = Math.PI / 3;
       heartGroup.add(mitralValve);
+      mitralLeaflets = createValveLeafletSet(0.33, 2, leafletMat, mitralValve);
 
       tricuspidValve = new THREE.Mesh(valveGeo, valveMat);
       tricuspidValve.position.set(-0.72, 0.28, 0.28);
       tricuspidValve.rotation.x = Math.PI / 3.4;
       heartGroup.add(tricuspidValve);
+      tricuspidLeaflets = createValveLeafletSet(0.33, 3, leafletMat, tricuspidValve);
 
       aorticValve = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.04, 14, 28), valveMat);
       aorticValve.position.set(0.16, 0.55, 0.06);
       aorticValve.rotation.x = Math.PI / 2.2;
       heartGroup.add(aorticValve);
+      aorticLeaflets = createValveLeafletSet(0.27, 3, leafletMat, aorticValve);
 
       pulmonaryValve = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.04, 14, 28), valveMat);
       pulmonaryValve.position.set(-0.36, 0.6, 0.52);
       pulmonaryValve.rotation.x = Math.PI / 2.4;
       heartGroup.add(pulmonaryValve);
+      pulmonaryLeaflets = createValveLeafletSet(0.25, 3, leafletMat, pulmonaryValve);
 
       // 11. HERZKRANZGEFÄSSE
       buildCoronaryVessels(fatMat);
@@ -1417,14 +1684,18 @@
         roughness: 0.18,
         metalness: 0.32,
         emissive: 0x990012,
-        emissiveIntensity: 0.28
+        emissiveIntensity: 0.28,
+        transparent: true
       });
+      coronaryArtMat = artMat;
 
       const veinMat = new THREE.MeshStandardMaterial({
         color: 0x2563eb,
         roughness: 0.25,
-        metalness: 0.2
+        metalness: 0.2,
+        transparent: true
       });
+      coronaryVeinMat = veinMat;
 
       // RIVA / LAD
       const ladCurve = new THREE.CatmullRomCurve3([
@@ -1481,11 +1752,12 @@
       ]);
       coronariesGroup.add(new THREE.Mesh(new THREE.TubeGeometry(rcaMarginalCurve, 16, 0.022, 10, false), artMat));
 
-      // Epikardiale Fettpolster
+      // Epikardiale Fettpolster (starten erst unterhalb der Klappenebene, damit sie
+      // nicht optisch mit den Segelklappen/Sehnenfäden im Kammerschnitt kollidieren)
       const fatGeo = new THREE.SphereGeometry(0.14, 10, 10);
       fatGeo.scale(1.15, 0.38, 0.75);
-      for (let i = 0; i < 9; i++) {
-        const p = ladCurve.getPointAt(i / 8);
+      for (let i = 0; i < 8; i++) {
+        const p = ladCurve.getPointAt(0.16 + (i / 7) * 0.84);
         const fatMesh = new THREE.Mesh(fatGeo, fatMat);
         fatMesh.position.set(p.x - 0.02, p.y, p.z - 0.03);
         fatMesh.rotation.z = 0.4;
@@ -1807,6 +2079,8 @@
       let ventricleScale = 1.0;
       let torsionAngle = 0.0;
       let aortaExpansion = 1.0;
+      let avOpen = 0.0;
+      let semiOpen = 0.0;
 
       if (p < 0.20) {
         // Vorhof-Systole
@@ -1814,6 +2088,8 @@
         const squeeze = Math.sin(t * Math.PI) * 0.18;
         atriaScale = 1.0 - squeeze;
         ventricleScale = 1.0 + squeeze * 0.05;
+        avOpen = 1.0;
+        semiOpen = 0.0;
 
         mitralValve.scale.setScalar(1.25);
         tricuspidValve.scale.setScalar(1.25);
@@ -1821,12 +2097,14 @@
         pulmonaryValve.scale.setScalar(0.9);
 
         updatePhaseUI('1. Vorhof-Systole (Aktive Füllung)', 'Vorhöfe kontrahieren synchron und werfen Blut über die Segelklappen in die Kammern.');
-      } 
+      }
       else if (p >= 0.20 && p < 0.28) {
         // Anspannungsphase
         const t = (p - 0.20) / 0.08;
         ventricleScale = 1.0 - t * 0.06;
         torsionAngle = t * 0.04;
+        avOpen = 1.0 - t;
+        semiOpen = 0.0;
 
         mitralValve.scale.setScalar(0.85);
         tricuspidValve.scale.setScalar(0.85);
@@ -1834,7 +2112,7 @@
         pulmonaryValve.scale.setScalar(0.85);
 
         updatePhaseUI('2. Anspannungsphase (Isovolumetrisch)', 'Alle 4 Klappen geschlossen. Kammermyokard spannt sich extrem an, Innendruck schießt hoch.');
-      } 
+      }
       else if (p >= 0.28 && p < 0.52) {
         // Austreibungsphase & Wring-Torsion
         const t = (p - 0.28) / 0.24;
@@ -1842,6 +2120,8 @@
         ventricleScale = 0.94 - squeeze;
         torsionAngle = 0.04 + Math.sin(t * Math.PI) * 0.12;
         aortaExpansion = 1.0 + squeeze * 0.24;
+        avOpen = 0.0;
+        semiOpen = Math.sin(t * Math.PI);
 
         mitralValve.scale.setScalar(0.85);
         tricuspidValve.scale.setScalar(0.85);
@@ -1849,7 +2129,7 @@
         pulmonaryValve.scale.setScalar(1.35);
 
         updatePhaseUI('3. Austreibungsphase (Kammer-Systole & Torsion)', 'Taschenklappen öffnen: Apex dreht sich (Wring-Effekt), Blut wird mit Hochdruck in die Aorta ausgeworfen.');
-      } 
+      }
       else {
         // Diastole
         const t = (p - 0.52) / 0.48;
@@ -1858,6 +2138,8 @@
         torsionAngle = 0.16 * (1.0 - rebound);
         atriaScale = 0.95 + rebound * 0.05;
         aortaExpansion = 1.16 - rebound * 0.16;
+        avOpen = Math.min(1.0, t * 3.0);
+        semiOpen = 0.0;
 
         mitralValve.scale.setScalar(1.1);
         tricuspidValve.scale.setScalar(1.1);
@@ -1866,6 +2148,11 @@
 
         updatePhaseUI('4. Entspannungsphase & Diastole', 'Herzkammern erschlaffen. Diastolischer Sog füllt das Myokard und Koronarien mit neuem Blut.');
       }
+
+      setLeafletTipOffset(mitralLeaflets, avOpen * 0.22 - (1.0 - avOpen) * 0.04);
+      setLeafletTipOffset(tricuspidLeaflets, avOpen * 0.18 - (1.0 - avOpen) * 0.03);
+      setLeafletTipOffset(aorticLeaflets, semiOpen * 0.16 - (1.0 - semiOpen) * 0.03);
+      setLeafletTipOffset(pulmonaryLeaflets, semiOpen * 0.14 - (1.0 - semiOpen) * 0.03);
 
       if (STATE.rhythm !== 'afib') {
         atriaGroup.scale.set(atriaScale, atriaScale, atriaScale);
@@ -2224,9 +2511,11 @@
       if (leftVentricle && rightVentricle) {
         leftVentricle.geometry.dispose();
         leftVentricle.geometry = createSculptedVentricleGeo(speciesKey, true);
+        if (leftVentricleInner) leftVentricleInner.geometry = leftVentricle.geometry;
 
         rightVentricle.geometry.dispose();
         rightVentricle.geometry = createSculptedVentricleGeo(speciesKey, false);
+        if (rightVentricleInner) rightVentricleInner.geometry = rightVentricle.geometry;
       }
 
       if (leftAtrium && rightAtrium && leftAuricle && rightAuricle) {
@@ -2525,6 +2814,74 @@
       document.querySelectorAll('.toggle-labels-btn').forEach(btn => {
         btn.innerText = STATE.showLabels ? 'Labels: Ein' : 'Labels: Aus';
       });
+
+      setVesselOpacity(STATE.vesselOpacity);
+      setTissueOpacity(STATE.tissueOpacity);
+    }
+
+    // Transparenz-Regler: Venen/Arterien getrennt vom restlichen Gewebe steuerbar,
+    // damit man z.B. bei hoher Gefäß-Transparenz durch die Adern ins Herz hineinsehen kann.
+    function setVesselOpacity(pct) {
+      STATE.vesselOpacity = pct;
+      const op = 1 - pct / 100;
+      [aortaMat, blueVesselMat, coronaryArtMat, coronaryVeinMat].forEach(m => {
+        if (m) m.opacity = op;
+      });
+      document.querySelectorAll('.vessel-opacity-value').forEach(el => el.innerText = pct + '%');
+      document.querySelectorAll('.vessel-opacity-slider').forEach(el => el.value = pct);
+    }
+
+    function setTissueOpacity(pct) {
+      STATE.tissueOpacity = pct;
+      const op = 1 - pct / 100;
+      [myocardiumMat, rightVentricleMat, atriaMat, septumMat, endocardiumMat, valveMat, leafletMat, fatMat].forEach(m => {
+        if (m) m.opacity = op;
+      });
+      document.querySelectorAll('.tissue-opacity-value').forEach(el => el.innerText = pct + '%');
+      document.querySelectorAll('.tissue-opacity-slider').forEach(el => el.value = pct);
+    }
+
+    // Setzt wirklich ALLES zurück: Physiologie (Spezies/Aktivität/Rhythmus),
+    // 3D-Ansichtsmodi, Transparenz-Regler, Wiedergabe/Ton und Kamera/Tour.
+    function resetAll() {
+      STATE.species = 'human';
+      STATE.activity = 'rest';
+      STATE.rhythm = 'sinus';
+      STATE.isCutaway = false;
+      STATE.showConduction = true;
+      STATE.showCoronaries = true;
+      STATE.showParticles = true;
+      STATE.showLabels = true;
+      STATE.vesselOpacity = 0;
+      STATE.tissueOpacity = 0;
+
+      const noPlanes = [];
+      if (leftVentricle) leftVentricle.material.clippingPlanes = noPlanes;
+      if (rightVentricle) rightVentricle.material.clippingPlanes = noPlanes;
+      if (leftAtrium) leftAtrium.material.clippingPlanes = noPlanes;
+      if (rightAtrium) rightAtrium.material.clippingPlanes = noPlanes;
+      if (septumMesh) septumMesh.material.clippingPlanes = noPlanes;
+      if (endocardiumMat) endocardiumMat.clippingPlanes = noPlanes;
+
+      if (conductionGroup) conductionGroup.visible = true;
+      if (coronariesGroup) coronariesGroup.visible = true;
+
+      if (STATE.isPaused) togglePauseState();
+
+      STATE.audioEnabled = true;
+      const audioIconOn = document.getElementById('audioIconOn');
+      const audioIconOff = document.getElementById('audioIconOff');
+      const audioStatusText = document.getElementById('audioStatusText');
+      if (audioIconOn) audioIconOn.classList.remove('hidden');
+      if (audioIconOff) audioIconOff.classList.add('hidden');
+      if (audioStatusText) audioStatusText.innerText = 'Ton: An';
+
+      const phaseStack = document.getElementById('phaseStack');
+      if (phaseStack) phaseStack.innerHTML = '';
+      lastPhaseTitle = null;
+
+      syncButtonsState();
+      setTourStep(0);
     }
 
     function attachControlPanelEvents(container) {
@@ -2585,6 +2942,7 @@
           leftAtrium.material.clippingPlanes = planes;
           rightAtrium.material.clippingPlanes = planes;
           if (septumMesh) septumMesh.material.clippingPlanes = planes;
+          if (endocardiumMat) endocardiumMat.clippingPlanes = planes;
           syncButtonsState();
         });
       });
@@ -2616,6 +2974,18 @@
         btn.addEventListener('click', () => {
           STATE.showLabels = !STATE.showLabels;
           syncButtonsState();
+        });
+      });
+
+      container.querySelectorAll('.vessel-opacity-slider').forEach(slider => {
+        slider.addEventListener('input', (e) => {
+          setVesselOpacity(parseInt(e.target.value, 10));
+        });
+      });
+
+      container.querySelectorAll('.tissue-opacity-slider').forEach(slider => {
+        slider.addEventListener('input', (e) => {
+          setTissueOpacity(parseInt(e.target.value, 10));
         });
       });
     }
@@ -2662,11 +3032,7 @@
       document.getElementById('tourPrevBtn').addEventListener('click', () => setTourStep(STATE.tourStep - 1));
       document.getElementById('tourNextBtn').addEventListener('click', () => setTourStep(STATE.tourStep + 1));
 
-      document.getElementById('resetCameraBtn').addEventListener('click', () => {
-        const isMobile = window.innerWidth < 768;
-        tourTargetPos = new THREE.Vector3(0, isMobile ? 1.0 : 1.2, isMobile ? 8.8 : 8.0);
-        tourTargetLook = new THREE.Vector3(0, 0.2, 0);
-      });
+      document.getElementById('resetCameraBtn').addEventListener('click', resetAll);
 
       const modal = document.getElementById('detailModal');
       const openModal = () => modal.classList.remove('hidden');
