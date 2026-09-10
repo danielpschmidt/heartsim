@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aetheria – Generative 3D-Welt</title>
+  
+  <!-- Tailwind CSS für modernes UI -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Three.js (3D WebGL Library) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&family=Space+Grotesk:wght@400;600;700&display=swap');
+
+    * {
+      user-select: none;
+      -webkit-user-select: none;
+      box-sizing: border-box;
+    }
+
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #000000;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #f8fafc;
+    }
+
+    .font-display {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    /* Canvas CSS – Erlaubt dynamisches 8-Bit Pixel-Upscaling */
+    #canvas-container canvas {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+      transition: filter 0.3s ease-out;
+    }
+
+    .pixelated-canvas {
+      image-rendering: pixelated !important;
+      image-rendering: -moz-crisp-edges !important;
+      image-rendering: crisp-edges !important;
+    }
+
+    /* Glassmorphism Panel Styling */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+    }
+
+    .glass-btn {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .glass-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px -4px rgba(236, 72, 153, 0.4);
+    }
+
+    .glass-btn:active {
+      transform: translateY(0) scale(0.97);
+    }
+
+    .active-chip {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.35), rgba(217, 70, 239, 0.35)) !important;
+      border-color: rgba(217, 70, 239, 0.6) !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 15px rgba(217, 70, 239, 0.3);
+    }
+
+    .rainbow-border {
+      background: linear-gradient(60deg, #f43f5e, #ec4899, #8b5cf6, #3b82f6, #10b981, #f59e0b);
+      background-size: 300% 300%;
+      animation: rainbowGlow 8s ease infinite;
+    }
+
+    @keyframes rainbowGlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+</head>
+<body class="relative w-full h-full overflow-hidden bg-black">
+
+  <!-- Aufblitz- & Aufwach-Overlay -->
+  <div id="flash-overlay" class="absolute inset-0 bg-white pointer-events-none opacity-0 z-50 transition-opacity duration-500 ease-out"></div>
+
+  <!-- Schwarz-Verblendungs-Overlay für Tiefschlaf (nach 20-25s) -->
+  <div id="blackout-overlay" class="absolute inset-0 bg-black pointer-events-none opacity-0 z-40 transition-opacity duration-300"></div>
+
+  <!-- WebGL 3D Canvas Container -->
+  <div id="canvas-container" class="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing"></div>
+
+  <!-- Interaktives HUD Overlay -->
+  <div id="hud-overlay" class="absolute inset-0 pointer-events-none flex flex-col justify-between p-3 sm:p-5 lg:p-6 z-10 transition-opacity duration-500">
+    
+    <!-- Top Header: Status & Live Inaktivitäts-Balken -->
+    <div class="flex flex-wrap items-center justify-between gap-3 pointer-events-auto">
+      
+      <!-- Logo & Systemstatus -->
+      <div class="glass-panel px-4 py-2.5 rounded-2xl flex items-center gap-3">
+        <div class="relative flex items-center justify-center w-8 h-8 rounded-xl rainbow-border shadow-lg shadow-pink-500/20">
+          <svg class="w-4 h-4 text-white animate-spin" style="animation-duration: 10s;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-xs sm:text-sm font-bold tracking-wider font-display uppercase bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-purple-300 to-cyan-300">
+            Aetheria <span class="text-[10px] font-mono font-normal text-pink-300 px-1.5 py-0.5 rounded-full bg-pink-950/60 border border-pink-700/50">Spectral Awakening</span>
+          </h1>
+          <p id="time-weather-status" class="text-[11px] text-slate-300 flex items-center gap-1.5">
+            <span id="status-pulse" class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+            <span id="status-text">Aktiv • Synchronisiert</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Inaktivitäts- & Schlaf-Phasenanzeige -->
+      <div class="glass-panel px-4 py-2 rounded-2xl flex items-center gap-3">
+        <div class="text-right">
+          <div class="text-[9px] uppercase font-bold tracking-widest text-slate-400">Ruhezustands-Timer</div>
+          <div id="idle-display" class="text-xs font-mono font-bold text-cyan-300">
+            Aktiv (0.0s)
+          </div>
+        </div>
+        <div class="w-16 h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+          <div id="idle-bar" class="h-full bg-gradient-to-r from-cyan-400 via-yellow-400 to-rose-500 w-0 transition-all duration-100"></div>
+        </div>
+      </div>
+
+      <!-- Live Resonanz & Evolutions-Fortschritt -->
+      <div class="glass-panel px-4 py-2.5 rounded-2xl flex items-center gap-3.5">
+        <div class="text-right">
+          <div class="text-[9px] uppercase font-bold tracking-widest text-slate-400">Resonanz & Fortschritt</div>
+          <div class="flex items-center justify-end gap-1.5">
+            <span id="resonance-counter" class="text-sm sm:text-base font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-amber-300">
+              0 XP
+            </span>
+            <span id="next-level-xp" class="text-[10px] text-slate-400 font-mono">/ 250 XP</span>
+          </div>
+        </div>
+
+        <div class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700/80 flex items-center justify-center relative overflow-hidden shadow-inner">
+          <div id="evolution-ring" class="absolute bottom-0 w-full bg-gradient-to-t from-cyan-500 via-fuchsia-500 to-amber-400 transition-all duration-500" style="height: 0%;"></div>
+          <span id="level-badge" class="relative z-10 text-xs font-bold font-display text-white drop-shadow">Lvl 1</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interaktions-Hinweis in der Mitte -->
+    <div id="interaction-hint" class="pointer-events-none self-center text-center transition-all duration-700 my-auto">
+      <div class="glass-panel px-5 py-2.5 rounded-full inline-flex items-center gap-2.5 border border-fuchsia-500/30 shadow-2xl shadow-fuchsia-500/20">
+        <svg class="w-4 h-4 text-fuchsia-400 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
+        </svg>
+        <span class="text-xs font-medium text-slate-200">Bewege die Maus zum Interagieren • Bei Stillstand verfällt das Bild in 8-Bit (15s), S/W (20s) & Schwarz (25s)</span>
+      </div>
+    </div>
+
+    <!-- Bottom Controls & Parameter Dashboard -->
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-3 pointer-events-auto">
+      
+      <!-- Formen-Auswahl (Morphologien) -->
+      <div class="glass-panel p-2.5 rounded-2xl flex flex-col gap-2">
+        <div class="flex items-center justify-between px-1">
+          <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 font-display flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> Haupt-Morphologie
+          </span>
+          <button id="btn-mutate" class="text-[10px] font-bold text-pink-400 hover:text-pink-300 flex items-center gap-1 transition-colors">
+            🎲 Kosmische Mutation
+          </button>
+        </div>
+        
+        <div class="flex flex-wrap items-center gap-1.5">
+          <button data-shape="sphere" class="shape-btn glass-btn px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-300 active-chip flex items-center gap-1.5">
+            🌐 Sphäre
+          </button>
+          <button data-shape="mobius" class="shape-btn glass-btn px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-300 flex items-center gap-1.5">
+            ♾️ Möbius-Band
+          </button>
+          <button data-shape="torus" class="shape-btn glass-btn px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-300 flex items-center gap-1.5">
+            🥨 Torus-Knoten
+          </button>
+          <button data-shape="crystal" class="shape-btn glass-btn px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-300 flex items-center gap-1.5">
+            💎 Kristall
+          </button>
+          <button data-shape="lotus" class="shape-btn glass-btn px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-300 flex items-center gap-1.5">
+            🌺 Hyper-Blüte
+          </button>
+          <button data-shape="gyro" class="shape-btn glass-btn px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-300 flex items-center gap-1.5">
+            🪐 Cyber-Ring
+          </button>
+        </div>
+      </div>
+
+      <!-- Wetter, Tageszeit & Audio Tools -->
+      <div class="glass-panel p-2.5 rounded-2xl flex flex-wrap items-center justify-between sm:justify-end gap-2">
+        
+        <!-- Wetter Schalter -->
+        <div class="flex bg-slate-900/70 p-1 rounded-xl border border-slate-800">
+          <button data-weather="clear" class="weather-btn px-2 py-1 rounded-lg text-xs font-medium text-slate-300 active-chip shadow" title="Klarer Himmel">
+            ☀️
+          </button>
+          <button data-weather="rain" class="weather-btn px-2 py-1 rounded-lg text-xs font-medium text-slate-400" title="Regen">
+            🌧️
+          </button>
+          <button data-weather="snow" class="weather-btn px-2 py-1 rounded-lg text-xs font-medium text-slate-400" title="Schnee">
+            ❄️
+          </button>
+          <button data-weather="storm" class="weather-btn px-2 py-1 rounded-lg text-xs font-medium text-slate-400" title="Ionensturm">
+            ⚡
+          </button>
+        </div>
+
+        <!-- Tageszeit Schalter -->
+        <button id="btn-toggle-time" class="glass-btn px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-200 flex items-center gap-1" title="Tageszeit wechseln">
+          <span id="time-icon">🌇</span>
+          <span id="time-label" class="hidden md:inline">Auto</span>
+        </button>
+
+        <!-- Audio Schalter -->
+        <button id="btn-audio" class="glass-btn px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+          <svg id="audio-icon-off" class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+          </svg>
+          <svg id="audio-icon-on" class="w-3.5 h-3.5 text-emerald-400 hidden animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+          </svg>
+          <span id="audio-label" class="hidden sm:inline">Klang</span>
+        </button>
+
+        <!-- Screenshot Button -->
+        <button id="btn-snapshot" class="glass-btn px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-200" title="HD-Bild speichern">
+          <svg class="w-3.5 h-3.5 text-cyan-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 glass-panel px-5 py-3 rounded-2xl flex items-center gap-3 pointer-events-none opacity-0 transition-all duration-500 scale-90 z-50 border border-fuchsia-500/50 shadow-2xl shadow-pink-500/30">
+    <span class="text-2xl" id="toast-icon">✨</span>
+    <div>
+      <h4 id="toast-title" class="text-xs font-bold uppercase tracking-wider text-pink-300 font-display">Neue Resonanz entdeckt!</h4>
+      <p id="toast-desc" class="text-xs text-slate-200">Quanten-Reflexionen freigeschaltet.</p>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       AETHERIA 3D CORE ENGINE – SPECTRAL AWAKENING
+       ========================================================================== */
+
+    const CONFIG = {
+      resonanceXP: 0,
+      level: 1,
+      currentWeather: 'clear', 
+      timeMode: 'auto',
+      currentShape: 'sphere',
+      audioEnabled: false,
+      seed: Math.random() * 1000,
+      morphSpeed: 0.7,
+      gravityStrength: 1.0,
+      colorPaletteIndex: 0
+    };
+
+    function getXPForLevel(lvl) {
+      return Math.floor(250 * Math.pow(lvl, 1.45));
+    }
+
+    // Inaktivitäts- & Schlafmodus-Controller
+    const IDLE_SYSTEM = {
+      idleTime: 0,
+      isSleeping: false,
+      currentPixelScale: 1.0,
+      targetPixelScale: 1.0,
+      grayscale: 0,
+      blackout: 0
+    };
+
+    // Globale Three.js Variablen
+    let scene, camera, renderer;
+    let mainGroup; 
+    let coreMesh, coreWireframe, ringGroup;
+    let particleSystem, particleGeometry, particlePositions;
+    let weatherParticles, weatherGeometry, weatherCount = 2000;
+    let pointLight1, pointLight2, ambientLight, sunLight;
+    
+    // Präziser Zeit-Tracker (unabhängig von Drei-Clock-Kollisionen)
+    let lastFrameTime = performance.now();
+    let totalElapsedTime = 0;
+    
+    // Maus-, Touch- & Rotationssteuerung
+    let mouse = new THREE.Vector2(0, 0);
+    let targetMouse = new THREE.Vector2(0, 0);
+    let isDragging = false;
+    let previousPointerPosition = { x: 0, y: 0 };
+    let rotationVelocity = { x: 0.002, y: 0.004 };
+    let cameraDistance = 9.0;
+    let targetCameraDistance = 9.0;
+    let shockwaves = [];
+
+    // Dynamisches Spawner-System für zufallsgenerierte Maus-3D-Formen
+    let spawnedShapes = [];
+    const MAX_SPAWNED_SHAPES = 35;
+    let timeSinceLastSpawn = 0;
+    let nextSpawnInterval = 0.12 + Math.random() * 0.25;
+    let accumulatedMovement = 0;
+
+    // Sublimes autonomes Muster-System
+    let sublimePatterns = [];
+    let timeSinceLastSublimePattern = 0;
+    let nextSublimeInterval = 10.0 + Math.random() * 12.0;
+
+    // Web Audio Synthesizer Instanz
+    let audioCtx = null;
+    let masterGain = null;
+
+    // Farbpaletten
+    const COLOR_PALETTES = [
+      { name: "Prisma Neon", core: 0xec4899, emissive: 0x8b5cf6, light1: 0x06b6d4, light2: 0xf43f5e, rings: 0x3b82f6 },
+      { name: "Smaragd Hypernova", core: 0x10b981, emissive: 0x06b6d4, light1: 0xa855f7, light2: 0xfacc15, rings: 0x10b981 },
+      { name: "Solar Flare", core: 0xf97316, emissive: 0xef4444, light1: 0xfacc15, light2: 0xec4899, rings: 0xfbbf24 },
+      { name: "Cyberpunk Magenta", core: 0xd946ef, emissive: 0x3b82f6, light1: 0x06b6d4, light2: 0xf43f5e, rings: 0xec4899 },
+      { name: "Deep Cosmic Gold", core: 0x6366f1, emissive: 0xf59e0b, light1: 0xec4899, light2: 0x10b981, rings: 0x8b5cf6 }
+    ];
+
+    const SPAWN_GEOMETRIES = [
+      () => new THREE.TetrahedronGeometry(0.35 + Math.random() * 0.25),
+      () => new THREE.OctahedronGeometry(0.32 + Math.random() * 0.25),
+      () => new THREE.IcosahedronGeometry(0.28 + Math.random() * 0.22, 0),
+      () => new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.2),
+      () => new THREE.TorusGeometry(0.32, 0.1, 16, 24),
+      () => new THREE.ConeGeometry(0.25, 0.6, 6)
+    ];
+
+    /* --------------------------------------------------------------------------
+       1. INITIALISIERUNG
+       -------------------------------------------------------------------------- */
+    function init3D() {
+      const container = document.getElementById('canvas-container');
+
+      scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x020617, 0.022);
+
+      camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 1.2, cameraDistance);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(1); // Standardmäßig 1 für sanftes hardwareweites Pixel-Scaling
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.35;
+      
+      const domCanvas = renderer.domElement;
+      container.appendChild(domCanvas);
+
+      mainGroup = new THREE.Group();
+      scene.add(mainGroup);
+
+      setupLighting();
+      createShapeGeometry(CONFIG.currentShape);
+      createCelestialRings();
+      createSpectralParticleSwarm();
+      createWeatherSystem();
+
+      spawnSublimePattern();
+
+      setupEventListeners(container);
+      syncTimeAndWeather();
+      animate();
+    }
+
+    /* --------------------------------------------------------------------------
+       2. BELEUCHTUNG MIT MEHRFARBIGEN LICHTQUELLEN
+       -------------------------------------------------------------------------- */
+    function setupLighting() {
+      ambientLight = new THREE.AmbientLight(0x1e1b4b, 1.5);
+      scene.add(ambientLight);
+
+      sunLight = new THREE.DirectionalLight(0xffffff, 2.2);
+      sunLight.position.set(6, 12, 8);
+      scene.add(sunLight);
+
+      pointLight1 = new THREE.PointLight(0x06b6d4, 4.0, 25);
+      pointLight1.position.set(4, 3, 4);
+      scene.add(pointLight1);
+
+      pointLight2 = new THREE.PointLight(0xf43f5e, 4.0, 25);
+      pointLight2.position.set(-4, -3, -4);
+      scene.add(pointLight2);
+    }
+
+    /* --------------------------------------------------------------------------
+       3. PROZEDURALE 3D-GEOMETRIEN & MÖBIUS-GENERATOR
+       -------------------------------------------------------------------------- */
+    function createMobiusGeometry(radius = 2.1, width = 0.9, segmentsU = 160, segmentsV = 24) {
+      const geom = new THREE.BufferGeometry();
+      const positions = [];
+      const uvs = [];
+      const indices = [];
+
+      for (let i = 0; i <= segmentsU; i++) {
+        const u = (i / segmentsU) * Math.PI * 2;
+        for (let j = 0; j <= segmentsV; j++) {
+          const v = ((j / segmentsV) - 0.5) * width;
+
+          const x = (radius + v * Math.cos(u / 2)) * Math.cos(u);
+          const y = (radius + v * Math.cos(u / 2)) * Math.sin(u);
+          const z = v * Math.sin(u / 2);
+
+          positions.push(x, y, z);
+          uvs.push(i / segmentsU, j / segmentsV);
+        }
+      }
+
+      const stride = segmentsV + 1;
+      for (let i = 0; i < segmentsU; i++) {
+        for (let j = 0; j < segmentsV; j++) {
+          const a = i * stride + j;
+          const b = (i + 1) * stride + j;
+          const c = (i + 1) * stride + (j + 1);
+          const d = i * stride + (j + 1);
+
+          indices.push(a, b, d);
+          indices.push(b, c, d);
+          indices.push(d, b, a);
+          indices.push(d, c, b);
+        }
+      }
+
+      geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geom.setIndex(indices);
+      geom.computeVertexNormals();
+
+      return geom;
+    }
+
+    function generateGeometryForShape(shape) {
+      let geo;
+      switch (shape) {
+        case 'mobius':
+          geo = createMobiusGeometry(2.1, 0.95, 180, 24);
+          break;
+        case 'torus':
+          geo = new THREE.TorusKnotGeometry(1.6, 0.52, 160, 32, 2, 3);
+          break;
+        case 'crystal':
+          geo = new THREE.IcosahedronGeometry(2.2, 3);
+          break;
+        case 'lotus':
+          geo = new THREE.TorusGeometry(1.8, 0.75, 32, 100, Math.PI * 2);
+          break;
+        case 'gyro':
+          geo = new THREE.DodecahedronGeometry(2.1, 4);
+          break;
+        case 'sphere':
+        default:
+          geo = new THREE.IcosahedronGeometry(2.3, 36);
+          break;
+      }
+
+      geo.userData = {
+        origPositions: geo.attributes.position.clone()
+      };
+      return geo;
+    }
+
+    function createShapeGeometry(shape) {
+      if (coreMesh) {
+        mainGroup.remove(coreMesh);
+        mainGroup.remove(coreWireframe);
+        coreMesh.geometry.dispose();
+        coreWireframe.geometry.dispose();
+      }
+
+      const geometry = generateGeometryForShape(shape);
+      const pal = COLOR_PALETTES[CONFIG.colorPaletteIndex];
+
+      const material = new THREE.MeshPhysicalMaterial({
+        color: pal.core,
+        emissive: pal.emissive,
+        emissiveIntensity: 0.45,
+        roughness: 0.12,
+        metalness: 0.75,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.08,
+        reflectivity: 0.95,
+        transmission: 0.1,
+        ior: 1.5,
+        side: THREE.DoubleSide,
+        wireframe: false
+      });
+
+      coreMesh = new THREE.Mesh(geometry, material);
+      mainGroup.add(coreMesh);
+
+      const wireMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.22,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending
+      });
+      coreWireframe = new THREE.Mesh(geometry, wireMaterial);
+      coreWireframe.scale.set(1.003, 1.003, 1.003);
+      mainGroup.add(coreWireframe);
+    }
+
+    /* --------------------------------------------------------------------------
+       4. CELESTIAL RINGS
+       -------------------------------------------------------------------------- */
+    function createCelestialRings() {
+      ringGroup = new THREE.Group();
+
+      const pal = COLOR_PALETTES[CONFIG.colorPaletteIndex];
+      const ringGeo1 = new THREE.RingGeometry(3.6, 4.3, 64);
+      const ringMat1 = new THREE.MeshStandardMaterial({
+        color: pal.rings,
+        emissive: pal.emissive,
+        emissiveIntensity: 0.6,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.45,
+        metalness: 0.8
+      });
+
+      const r1 = new THREE.Mesh(ringGeo1, ringMat1);
+      r1.rotation.x = Math.PI / 2.2;
+      ringGroup.add(r1);
+
+      const ringGeo2 = new THREE.RingGeometry(4.7, 5.0, 64);
+      const ringMat2 = new THREE.MeshBasicMaterial({
+        color: 0x06b6d4,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.35,
+        wireframe: true
+      });
+      const r2 = new THREE.Mesh(ringGeo2, ringMat2);
+      r2.rotation.y = Math.PI / 3;
+      ringGroup.add(r2);
+
+      mainGroup.add(ringGroup);
+    }
+
+    /* --------------------------------------------------------------------------
+       5. SPEKTRALER PARTIKEL-SCHWARM
+       -------------------------------------------------------------------------- */
+    function createSpectralParticleSwarm() {
+      const pCount = 14000;
+      particleGeometry = new THREE.BufferGeometry();
+      particlePositions = new Float32Array(pCount * 3);
+      const colors = new Float32Array(pCount * 3);
+
+      const colorSpectrum = [
+        new THREE.Color(0x06b6d4),
+        new THREE.Color(0xec4899),
+        new THREE.Color(0xfacc15),
+        new THREE.Color(0x10b981),
+        new THREE.Color(0x8b5cf6)
+      ];
+
+      for (let i = 0; i < pCount; i++) {
+        const radius = 2.8 + Math.random() * 9.5;
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos((Math.random() * 2) - 1);
+
+        particlePositions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+        particlePositions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+        particlePositions[i * 3 + 2] = radius * Math.cos(phi);
+
+        const chosenColor = colorSpectrum[i % colorSpectrum.length];
+        const variation = (Math.random() - 0.5) * 0.15;
+        const c = chosenColor.clone().offsetHSL(variation, 0, 0);
+
+        colors[i * 3] = c.r;
+        colors[i * 3 + 1] = c.g;
+        colors[i * 3 + 2] = c.b;
+      }
+
+      particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+      particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+      const particleCanvas = document.createElement('canvas');
+      particleCanvas.width = 32;
+      particleCanvas.height = 32;
+      const ctx = particleCanvas.getContext('2d');
+      const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+      gradient.addColorStop(0, 'rgba(255,255,255,1)');
+      gradient.addColorStop(0.35, 'rgba(236,72,153,0.85)');
+      gradient.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 32, 32);
+
+      const pTexture = new THREE.CanvasTexture(particleCanvas);
+
+      const particleMaterial = new THREE.PointsMaterial({
+        size: 0.14,
+        vertexColors: true,
+        map: pTexture,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+
+      particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+      scene.add(particleSystem);
+    }
+
+    /* --------------------------------------------------------------------------
+       6. PROZEDURALER FORMEN-SPAWNER (Maus-Mikroformen)
+       -------------------------------------------------------------------------- */
+    function spawnRandomShape(screenX, screenY) {
+      if (spawnedShapes.length >= MAX_SPAWNED_SHAPES) {
+        const oldest = spawnedShapes.shift();
+        scene.remove(oldest.mesh);
+        oldest.mesh.geometry.dispose();
+        oldest.mesh.material.dispose();
+      }
+
+      const vector = new THREE.Vector3(screenX, screenY, 0.5);
+      vector.unproject(camera);
+      const dir = vector.sub(camera.position).normalize();
+      const spawnDistance = 5.0 + Math.random() * 3.5;
+      const spawnPos = camera.position.clone().add(dir.multiplyScalar(spawnDistance));
+
+      const geoCreator = SPAWN_GEOMETRIES[Math.floor(Math.random() * SPAWN_GEOMETRIES.length)];
+      const geom = geoCreator();
+
+      const randomHue = (Math.random() + CONFIG.colorPaletteIndex * 0.2) % 1.0;
+      const shapeColor = new THREE.Color().setHSL(randomHue, 0.9, 0.6);
+      const emissiveColor = new THREE.Color().setHSL((randomHue + 0.1) % 1.0, 1.0, 0.5);
+
+      const matType = Math.random();
+      let mat;
+      
+      if (matType < 0.45) {
+        mat = new THREE.MeshPhysicalMaterial({
+          color: shapeColor,
+          emissive: emissiveColor,
+          emissiveIntensity: 0.8,
+          roughness: 0.1,
+          metalness: 0.8,
+          clearcoat: 1.0,
+          transparent: true,
+          opacity: 0.9,
+          side: THREE.DoubleSide,
+          wireframe: false
+        });
+      } else if (matType < 0.8) {
+        mat = new THREE.MeshStandardMaterial({
+          color: shapeColor,
+          emissive: emissiveColor,
+          emissiveIntensity: 1.2,
+          wireframe: true,
+          transparent: true,
+          opacity: 0.85,
+          side: THREE.DoubleSide
+        });
+      } else {
+        mat = new THREE.MeshPhysicalMaterial({
+          color: 0xffffff,
+          emissive: emissiveColor,
+          emissiveIntensity: 0.9,
+          roughness: 0.05,
+          transmission: 0.6,
+          ior: 1.6,
+          transparent: true,
+          opacity: 0.95,
+          side: THREE.DoubleSide
+        });
+      }
+
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.position.copy(spawnPos);
+
+      mesh.rotation.set(
+        Math.random() * Math.PI * 2,
+        Math.random() * Math.PI * 2,
+        Math.random() * Math.PI * 2
+      );
+
+      const initialScale = 0.01;
+      mesh.scale.set(initialScale, initialScale, initialScale);
+      scene.add(mesh);
+
+      const shapeData = {
+        mesh: mesh,
+        maxLife: 2.8 + Math.random() * 3.2,
+        life: 2.8 + Math.random() * 3.2,
+        targetScale: 0.5 + Math.random() * 0.7,
+        rotationSpeed: new THREE.Vector3(
+          (Math.random() - 0.5) * 0.06,
+          (Math.random() - 0.5) * 0.06,
+          (Math.random() - 0.5) * 0.06
+        ),
+        driftVelocity: new THREE.Vector3(
+          (Math.random() - 0.5) * 0.02,
+          (Math.random() - 0.5) * 0.02 + 0.008,
+          (Math.random() - 0.5) * 0.02
+        ),
+        pulseFreq: 2.0 + Math.random() * 4.0
+      };
+
+      spawnedShapes.push(shapeData);
+
+      if (Math.random() > 0.6) playGenerativeChime(0.6);
+      addResonance(0.5);
+    }
+
+    function updateSpawnedShapes(delta, elapsedTime) {
+      for (let i = spawnedShapes.length - 1; i >= 0; i--) {
+        const shape = spawnedShapes[i];
+        shape.life -= delta;
+
+        if (shape.life <= 0) {
+          scene.remove(shape.mesh);
+          shape.mesh.geometry.dispose();
+          shape.mesh.material.dispose();
+          spawnedShapes.splice(i, 1);
+          continue;
+        }
+
+        shape.mesh.rotation.x += shape.rotationSpeed.x;
+        shape.mesh.rotation.y += shape.rotationSpeed.y;
+        shape.mesh.rotation.z += shape.rotationSpeed.z;
+
+        const toCenter = new THREE.Vector3(0, 0, 0).sub(shape.mesh.position).normalize().multiplyScalar(0.004);
+        shape.mesh.position.add(shape.driftVelocity);
+        shape.mesh.position.add(toCenter);
+
+        const lifeRatio = shape.life / shape.maxLife;
+        let scaleProgress = 1.0;
+
+        if (lifeRatio > 0.8) {
+          scaleProgress = (1.0 - lifeRatio) / 0.2;
+        } else if (lifeRatio < 0.25) {
+          scaleProgress = lifeRatio / 0.25;
+        }
+
+        const pulse = 1.0 + Math.sin(elapsedTime * shape.pulseFreq) * 0.12;
+        const currentScale = shape.targetScale * scaleProgress * pulse;
+        shape.mesh.scale.set(currentScale, currentScale, currentScale);
+
+        if (shape.mesh.material) {
+          shape.mesh.material.opacity = Math.min(1.0, scaleProgress * 1.1);
+        }
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       7. SUBLIME AUTONOME MUSTER-ENGINE
+       -------------------------------------------------------------------------- */
+    function spawnSublimePattern() {
+      if (sublimePatterns.length >= 3) {
+        const oldest = sublimePatterns.shift();
+        scene.remove(oldest.object);
+        disposeObject(oldest.object);
+      }
+
+      const patternTypes = ['lissajous', 'fibonacciMatrix', 'sacredHarmonic', 'interferenceLattice'];
+      const chosenType = patternTypes[Math.floor(Math.random() * patternTypes.length)];
+      
+      let object3D;
+      const pal = COLOR_PALETTES[CONFIG.colorPaletteIndex];
+      const maxOpacity = 0.22 + Math.random() * 0.12;
+
+      switch (chosenType) {
+        case 'lissajous': {
+          const points = [];
+          const a = 2 + Math.floor(Math.random() * 4);
+          const b = 3 + Math.floor(Math.random() * 3);
+          const c = 2 + Math.floor(Math.random() * 3);
+          const deltaPhase = Math.random() * Math.PI;
+          const radius = 5.0 + Math.random() * 2.5;
+
+          for (let t = 0; t <= Math.PI * 4; t += 0.04) {
+            points.push(new THREE.Vector3(
+              Math.sin(a * t + deltaPhase) * radius,
+              Math.cos(b * t) * (radius * 0.75),
+              Math.sin(c * t) * (radius * 0.8)
+            ));
+          }
+
+          const curveGeo = new THREE.BufferGeometry().setFromPoints(points);
+          const curveMat = new THREE.LineBasicMaterial({
+            color: pal.light1,
+            transparent: true,
+            opacity: 0.0,
+            blending: THREE.AdditiveBlending,
+            linewidth: 1
+          });
+          object3D = new THREE.Line(curveGeo, curveMat);
+          break;
+        }
+
+        case 'fibonacciMatrix': {
+          const count = 380;
+          const geo = new THREE.BufferGeometry();
+          const pos = new Float32Array(count * 3);
+          const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+          const rBase = 6.0 + Math.random() * 2.0;
+
+          for (let i = 0; i < count; i++) {
+            const y = 1 - (i / (count - 1)) * 2;
+            const radiusAtY = Math.sqrt(1 - y * y);
+            const theta = goldenAngle * i;
+
+            pos[i * 3] = Math.cos(theta) * radiusAtY * rBase;
+            pos[i * 3 + 1] = y * rBase;
+            pos[i * 3 + 2] = Math.sin(theta) * radiusAtY * rBase;
+          }
+
+          geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+          const mat = new THREE.PointsMaterial({
+            color: pal.light2,
+            size: 0.08,
+            transparent: true,
+            opacity: 0.0,
+            blending: THREE.AdditiveBlending
+          });
+          object3D = new THREE.Points(geo, mat);
+          break;
+        }
+
+        case 'sacredHarmonic': {
+          const geom = Math.random() > 0.5 
+            ? new THREE.IcosahedronGeometry(5.2 + Math.random() * 2.0, 1)
+            : new THREE.OctahedronGeometry(5.5 + Math.random() * 1.5, 2);
+
+          const mat = new THREE.MeshBasicMaterial({
+            color: pal.rings,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.0,
+            blending: THREE.AdditiveBlending
+          });
+          object3D = new THREE.Mesh(geom, mat);
+          break;
+        }
+
+        case 'interferenceLattice':
+        default: {
+          const group = new THREE.Group();
+          const ringsCount = 4 + Math.floor(Math.random() * 3);
+          for (let r = 0; r < ringsCount; r++) {
+            const circleGeo = new THREE.RingGeometry(3.5 + r * 0.9, 3.52 + r * 0.9, 64);
+            const circleMat = new THREE.MeshBasicMaterial({
+              color: pal.emissive,
+              side: THREE.DoubleSide,
+              transparent: true,
+              opacity: 0.0,
+              blending: THREE.AdditiveBlending
+            });
+            const ring = new THREE.Mesh(circleGeo, circleMat);
+            ring.rotation.x = (Math.PI / 4) * r + (Math.random() * 0.2);
+            ring.rotation.y = (Math.PI / 6) * r;
+            group.add(ring);
+          }
+          object3D = group;
+          break;
+        }
+      }
+
+      object3D.position.set(0, 0, 0);
+      object3D.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+      scene.add(object3D);
+
+      const patternData = {
+        object: object3D,
+        type: chosenType,
+        maxLife: 16.0 + Math.random() * 8.0,
+        life: 16.0 + Math.random() * 8.0,
+        maxOpacity: maxOpacity,
+        rotSpeed: new THREE.Vector3(
+          (Math.random() - 0.5) * 0.003,
+          (Math.random() - 0.5) * 0.004,
+          (Math.random() - 0.5) * 0.003
+        )
+      };
+
+      sublimePatterns.push(patternData);
+      addResonance(1.5);
+    }
+
+    function updateSublimePatterns(delta, elapsedTime) {
+      for (let i = sublimePatterns.length - 1; i >= 0; i--) {
+        const item = sublimePatterns[i];
+        item.life -= delta;
+
+        if (item.life <= 0) {
+          scene.remove(item.object);
+          disposeObject(item.object);
+          sublimePatterns.splice(i, 1);
+          continue;
+        }
+
+        item.object.rotation.x += item.rotSpeed.x;
+        item.object.rotation.y += item.rotSpeed.y;
+        item.object.rotation.z += item.rotSpeed.z;
+
+        const progress = 1.0 - (item.life / item.maxLife);
+        const bellCurve = Math.sin(progress * Math.PI);
+        const currentOpacity = item.maxOpacity * Math.pow(bellCurve, 1.4);
+
+        setOpacityRecursive(item.object, currentOpacity);
+
+        const breathScale = 1.0 + Math.sin(elapsedTime * 0.4 + i) * 0.04;
+        item.object.scale.set(breathScale, breathScale, breathScale);
+      }
+    }
+
+    function setOpacityRecursive(obj, opacity) {
+      if (obj.material) {
+        obj.material.opacity = opacity;
+      }
+      if (obj.children && obj.children.length > 0) {
+        for (let child of obj.children) {
+          setOpacityRecursive(child, opacity);
+        }
+      }
+    }
+
+    function disposeObject(obj) {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+        else obj.material.dispose();
+      }
+      if (obj.children) {
+        for (let child of obj.children) disposeObject(child);
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       8. WETTER-SYSTEM
+       -------------------------------------------------------------------------- */
+    function createWeatherSystem() {
+      weatherGeometry = new THREE.BufferGeometry();
+      const pos = new Float32Array(weatherCount * 3);
+      const vel = new Float32Array(weatherCount * 3);
+
+      for (let i = 0; i < weatherCount; i++) {
+        pos[i * 3] = (Math.random() - 0.5) * 30;
+        pos[i * 3 + 1] = (Math.random() - 0.5) * 25;
+        pos[i * 3 + 2] = (Math.random() - 0.5) * 30;
+
+        vel[i * 3 + 1] = -0.16 - Math.random() * 0.12;
+      }
+
+      weatherGeometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      weatherGeometry.userData = { velocities: vel };
+
+      const weatherMat = new THREE.PointsMaterial({
+        color: 0x93c5fd,
+        size: 0.09,
+        transparent: true,
+        opacity: 0.0,
+        blending: THREE.AdditiveBlending
+      });
+
+      weatherParticles = new THREE.Points(weatherGeometry, weatherMat);
+      scene.add(weatherParticles);
+    }
+
+    /* --------------------------------------------------------------------------
+       9. AUDIO-SYNTHESIZER & ERWACHUNGS-AKKORDE
+       -------------------------------------------------------------------------- */
+    function initAudio() {
+      if (audioCtx) return;
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioContext();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.setValueAtTime(0.22, audioCtx.currentTime);
+      masterGain.connect(audioCtx.destination);
+    }
+
+    const PENTATONIC_SCALE = [196.00, 220.00, 261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99];
+
+    function playGenerativeChime(intensity = 1.0) {
+      if (!CONFIG.audioEnabled || !audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const note = PENTATONIC_SCALE[Math.floor(Math.random() * PENTATONIC_SCALE.length)];
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+
+      osc.type = Math.random() > 0.4 ? 'triangle' : 'sine';
+      osc.frequency.setValueAtTime(note, audioCtx.currentTime);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(1400 + Math.random() * 800, audioCtx.currentTime);
+
+      const now = audioCtx.currentTime;
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.exponentialRampToValueAtTime(0.18 * Math.min(intensity, 1.8), now + 0.06);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.8);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+
+      osc.start(now);
+      osc.stop(now + 2.0);
+    }
+
+    function playAwakeningChord() {
+      if (!CONFIG.audioEnabled || !audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const chord = [261.63, 329.63, 392.00, 523.25, 659.25];
+      const now = audioCtx.currentTime;
+
+      chord.forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const filter = audioCtx.createBiquadFilter();
+
+        osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(2200, now);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(0.15, now + 0.08 + idx * 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(masterGain);
+
+        osc.start(now + idx * 0.03);
+        osc.stop(now + 3.2);
+      });
+    }
+
+    /* --------------------------------------------------------------------------
+       10. INAKTIVITÄT, 8-BIT ZERFALL & AUFBLITZENDES ERWACHEN
+       -------------------------------------------------------------------------- */
+    function updateIdleSystem(delta) {
+      IDLE_SYSTEM.idleTime += delta;
+      const t = IDLE_SYSTEM.idleTime;
+
+      const domCanvas = renderer.domElement;
+      const blackoutEl = document.getElementById('blackout-overlay');
+      const idleDisplay = document.getElementById('idle-display');
+      const idleBar = document.getElementById('idle-bar');
+      const statusText = document.getElementById('status-text');
+      const statusPulse = document.getElementById('status-pulse');
+      const hudOverlay = document.getElementById('hud-overlay');
+
+      let pixelDivisor = 1.0;
+      let grayscaleAmount = 0;
+      let contrastAmount = 100;
+      let blackoutOpacity = 0;
+
+      // 1. Phasenberechnung
+      if (t < 15.0) {
+        // Phase 1 (0s bis 15s): Zunehmende Pixelierung bis 8-Bit
+        // Pixel-Teiler skaliert progressiv von 1.0 bis 28.0
+        const progress = Math.min(1.0, Math.max(0, (t - 1.0) / 14.0));
+        pixelDivisor = 1.0 + Math.pow(progress, 1.6) * 27.0;
+        
+        if (idleDisplay) idleDisplay.innerText = t < 1.0 ? `Aktiv (0.0s)` : `Pixelierung (${t.toFixed(1)}s / 15s)`;
+        if (statusText) statusText.innerText = t < 1.0 ? "Aktiv • Resonanz bereit" : "Zerfall in 8-Bit Matrix...";
+        if (statusPulse) statusPulse.className = "inline-block w-1.5 h-1.5 rounded-full bg-cyan-400";
+        if (hudOverlay) hudOverlay.style.opacity = '1';
+      } 
+      else if (t < 20.0) {
+        // Phase 2 (15s bis 20s): Vollständiges 8-Bit Raster + Entsättigung zu Schwarz-Weiß
+        pixelDivisor = 28.0 + ((t - 15.0) / 5.0) * 12.0; // bis 40px Blöcke
+        const grayProgress = (t - 15.0) / 5.0;
+        grayscaleAmount = grayProgress * 100;
+        contrastAmount = 100 + grayProgress * 90; // Scharfer 8-Bit Monochrom-Kontrast
+
+        if (idleDisplay) idleDisplay.innerText = `8-Bit S/W (${t.toFixed(1)}s / 20s)`;
+        if (statusText) statusText.innerText = "8-Bit Monochrom-Ruhezustand";
+        if (statusPulse) statusPulse.className = "inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse";
+        if (hudOverlay) hudOverlay.style.opacity = '0.85';
+      } 
+      else if (t < 25.0) {
+        // Phase 3 (20s bis 25s): Schwarz-Weiß verfällt in vollkommene Schwärze
+        pixelDivisor = 40.0;
+        grayscaleAmount = 100;
+        contrastAmount = 190;
+        const blackProgress = (t - 20.0) / 5.0;
+        blackoutOpacity = blackProgress;
+
+        if (idleDisplay) idleDisplay.innerText = `Verdunklung (${t.toFixed(1)}s / 25s)`;
+        if (statusText) statusText.innerText = "Kosmischer Tiefschlaf naht...";
+        if (statusPulse) statusPulse.className = "inline-block w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping";
+        if (hudOverlay) hudOverlay.style.opacity = `${Math.max(0.1, 1.0 - blackProgress)}`;
+      } 
+      else {
+        // Phase 4 (> 25s): Vollkommener Tiefschlaf (Pitch Black)
+        pixelDivisor = 40.0;
+        grayscaleAmount = 100;
+        contrastAmount = 200;
+        blackoutOpacity = 1.0;
+
+        if (idleDisplay) idleDisplay.innerText = `Tiefschlaf (>25s)`;
+        if (statusText) statusText.innerText = "Schlafzustand (Maus bewegen)";
+        if (statusPulse) statusPulse.className = "inline-block w-1.5 h-1.5 rounded-full bg-slate-600";
+        if (hudOverlay) hudOverlay.style.opacity = '0';
+      }
+
+      // Live-Fortschrittsbalken aktualisieren (0 bis 100% bei 25 Sekunden)
+      if (idleBar) {
+        const percent = Math.min(100, (t / 25.0) * 100);
+        idleBar.style.width = `${percent}%`;
+      }
+
+      // 2. Hardware-Pixel-Downsampling anwenden
+      IDLE_SYSTEM.targetPixelScale = pixelDivisor;
+      IDLE_SYSTEM.currentPixelScale += (IDLE_SYSTEM.targetPixelScale - IDLE_SYSTEM.currentPixelScale) * 0.2;
+
+      const scale = IDLE_SYSTEM.currentPixelScale;
+      if (scale > 1.2) {
+        domCanvas.classList.add('pixelated-canvas');
+      } else {
+        domCanvas.classList.remove('pixelated-canvas');
+      }
+
+      // Dynamische WebGL-Auflösung ohne CSS-Größenänderung skalieren
+      const renderW = Math.max(16, Math.floor(window.innerWidth / scale));
+      const renderH = Math.max(16, Math.floor(window.innerHeight / scale));
+      renderer.setSize(renderW, renderH, false);
+
+      // 3. Farbfilter & Blackout anwenden
+      domCanvas.style.filter = `grayscale(${grayscaleAmount}%) contrast(${contrastAmount}%)`;
+      if (blackoutEl) blackoutEl.style.opacity = blackoutOpacity;
+    }
+
+    function onUserInteractionActivity() {
+      const wasDormant = IDLE_SYSTEM.idleTime > 2.0;
+      const wasDeepSleep = IDLE_SYSTEM.idleTime > 12.0;
+
+      // Timer sofort auf 0 zurücksetzen
+      IDLE_SYSTEM.idleTime = 0;
+
+      // Bei vorheriger Inaktivität: Aufblitz-Effekt zünden
+      if (wasDormant) {
+        const flash = document.getElementById('flash-overlay');
+        if (flash) {
+          flash.style.transition = 'none';
+          flash.style.opacity = wasDeepSleep ? '0.9' : '0.6';
+          
+          setTimeout(() => {
+            flash.style.transition = 'opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1)';
+            flash.style.opacity = '0';
+          }, 20);
+        }
+
+        if (wasDeepSleep) {
+          playAwakeningChord();
+          showToast("Kosmos erwacht!", "HD-Farbbrillanz & Form wiederhergestellt.", "⚡");
+        } else {
+          playGenerativeChime(1.3);
+        }
+
+        syncTimeAndWeather();
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       11. GAMIFICATION & LEVEL-SYSTEM
+       -------------------------------------------------------------------------- */
+    function addResonance(points = 1) {
+      CONFIG.resonanceXP += points;
+      const counterEl = document.getElementById('resonance-counter');
+      const ringEl = document.getElementById('evolution-ring');
+      const levelEl = document.getElementById('level-badge');
+      const nextLevelEl = document.getElementById('next-level-xp');
+
+      if (counterEl) counterEl.innerText = `${Math.floor(CONFIG.resonanceXP).toLocaleString()} XP`;
+
+      const currentLevelCap = getXPForLevel(CONFIG.level);
+      const prevLevelCap = CONFIG.level > 1 ? getXPForLevel(CONFIG.level - 1) : 0;
+      
+      const levelProgress = Math.min(100, Math.max(0, ((CONFIG.resonanceXP - prevLevelCap) / (currentLevelCap - prevLevelCap)) * 100));
+      if (ringEl) ringEl.style.height = `${levelProgress}%`;
+      if (nextLevelEl) nextLevelEl.innerText = `/ ${currentLevelCap} XP`;
+
+      if (CONFIG.resonanceXP >= currentLevelCap) {
+        CONFIG.level++;
+        if (levelEl) levelEl.innerText = `Lvl ${CONFIG.level}`;
+        triggerLevelUpDiscovery(CONFIG.level);
+      }
+    }
+
+    function triggerLevelUpDiscovery(lvl) {
+      const discoveries = {
+        2: { title: "Prismatische Resonanz", desc: "Chromatische Lichtbrechung & sublime Harmonien aktiviert!", icon: "💎" },
+        3: { title: "Gravitations-Kanalisierung", desc: "Mikro-Geometrien tanzen im harmonischen Magnetfeld!", icon: "🌀" },
+        4: { title: "Quanten-Harmonie", desc: "Pentatonische Akkordfolgen schwingen im Raumkontinuum!", icon: "✨" },
+        5: { title: "Kosmische Transzendenz", desc: "Maximale morphologische Vielfalt entfesselt!", icon: "👑" }
+      };
+
+      const discovery = discoveries[lvl] || {
+        title: `Kosmische Stufe ${lvl}`,
+        desc: "Die Energie-Aura des Objekts erstrahlt in neuen Spektren!",
+        icon: "🌟"
+      };
+
+      showToast(discovery.title, discovery.desc, discovery.icon);
+      playGenerativeChime(2.5);
+      
+      CONFIG.colorPaletteIndex = (CONFIG.colorPaletteIndex + 1) % COLOR_PALETTES.length;
+      updatePaletteColors();
+    }
+
+    function showToast(title, desc, icon = "✨") {
+      const toast = document.getElementById('toast');
+      if (!toast) return;
+      document.getElementById('toast-title').innerText = title;
+      document.getElementById('toast-desc').innerText = desc;
+      document.getElementById('toast-icon').innerText = icon;
+
+      toast.classList.remove('opacity-0', 'scale-90');
+      toast.classList.add('opacity-100', 'scale-100');
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'scale-90');
+        toast.classList.remove('opacity-100', 'scale-100');
+      }, 4500);
+    }
+
+    /* --------------------------------------------------------------------------
+       12. FARBEN & MUTATIONEN
+       -------------------------------------------------------------------------- */
+    function updatePaletteColors() {
+      const pal = COLOR_PALETTES[CONFIG.colorPaletteIndex];
+      if (coreMesh) {
+        coreMesh.material.color.setHex(pal.core);
+        coreMesh.material.emissive.setHex(pal.emissive);
+        pointLight1.color.setHex(pal.light1);
+        pointLight2.color.setHex(pal.light2);
+      }
+    }
+
+    function mutateRandomly() {
+      CONFIG.colorPaletteIndex = Math.floor(Math.random() * COLOR_PALETTES.length);
+      CONFIG.seed = Math.random() * 5000;
+
+      const shapes = ['sphere', 'mobius', 'torus', 'crystal', 'lotus', 'gyro'];
+      const nextShape = shapes[Math.floor(Math.random() * shapes.length)];
+      setShape(nextShape);
+
+      updatePaletteColors();
+      showToast("Kosmische Mutation", `Farbe: ${COLOR_PALETTES[CONFIG.colorPaletteIndex].name}`, "🎲");
+      playGenerativeChime(1.8);
+      addResonance(15);
+    }
+
+    function setShape(shapeName) {
+      CONFIG.currentShape = shapeName;
+      createShapeGeometry(shapeName);
+
+      document.querySelectorAll('.shape-btn').forEach(btn => {
+        if (btn.dataset.shape === shapeName) {
+          btn.classList.add('active-chip');
+        } else {
+          btn.classList.remove('active-chip');
+        }
+      });
+    }
+
+    /* --------------------------------------------------------------------------
+       13. TAGESZEIT & WETTER
+       -------------------------------------------------------------------------- */
+    function syncTimeAndWeather() {
+      let hour = new Date().getHours();
+      let mode = CONFIG.timeMode;
+
+      if (mode === 'auto') {
+        if (hour >= 5 && hour < 8) mode = 'dawn';
+        else if (hour >= 8 && hour < 17) mode = 'day';
+        else if (hour >= 17 && hour < 21) mode = 'sunset';
+        else mode = 'night';
+      }
+
+      applyTimeTheme(mode);
+      applyWeatherTheme(CONFIG.currentWeather);
+    }
+
+    function applyTimeTheme(mode) {
+      const timeIcon = document.getElementById('time-icon');
+      const timeLabel = document.getElementById('time-label');
+
+      let skyColor;
+
+      switch (mode) {
+        case 'dawn':
+          skyColor = 0x181028;
+          if (timeIcon) timeIcon.innerText = '🌅';
+          if (timeLabel) timeLabel.innerText = 'Morgen';
+          break;
+        case 'day':
+          skyColor = 0x051b38;
+          if (timeIcon) timeIcon.innerText = '☀️';
+          if (timeLabel) timeLabel.innerText = 'Tag';
+          break;
+        case 'sunset':
+          skyColor = 0x2a0d24;
+          if (timeIcon) timeIcon.innerText = '🌇';
+          if (timeLabel) timeLabel.innerText = 'Abend';
+          break;
+        case 'night':
+        default:
+          skyColor = 0x020617;
+          if (timeIcon) timeIcon.innerText = '🌌';
+          if (timeLabel) timeLabel.innerText = 'Nacht';
+          break;
+      }
+
+      scene.fog.color.setHex(skyColor);
+      renderer.setClearColor(skyColor);
+    }
+
+    function applyWeatherTheme(weather) {
+      CONFIG.currentWeather = weather;
+      const weatherMat = weatherParticles.material;
+
+      document.querySelectorAll('.weather-btn').forEach(btn => {
+        if (btn.dataset.weather === weather) {
+          btn.classList.add('active-chip');
+        } else {
+          btn.classList.remove('active-chip');
+        }
+      });
+
+      switch (weather) {
+        case 'clear':
+          weatherMat.opacity = 0.0;
+          CONFIG.morphSpeed = 0.7;
+          break;
+        case 'rain':
+          weatherMat.opacity = 0.8;
+          weatherMat.color.setHex(0x38bdf8);
+          CONFIG.morphSpeed = 0.95;
+          break;
+        case 'snow':
+          weatherMat.opacity = 0.85;
+          weatherMat.color.setHex(0xffffff);
+          CONFIG.morphSpeed = 0.45;
+          break;
+        case 'storm':
+          weatherMat.opacity = 0.95;
+          weatherMat.color.setHex(0xf43f5e);
+          CONFIG.morphSpeed = 1.4;
+          break;
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       14. INTERAKTIONS- & DREHSTEUERUNG
+       -------------------------------------------------------------------------- */
+    function setupEventListeners(container) {
+      container.addEventListener('pointerdown', (e) => {
+        onUserInteractionActivity();
+        if (e.target.closest('button') || e.target.closest('.glass-panel')) return;
+        isDragging = true;
+        previousPointerPosition = { x: e.clientX, y: e.clientY };
+
+        shockwaves.push({
+          time: 0,
+          center: new THREE.Vector2(mouse.x, mouse.y),
+          intensity: 1.6
+        });
+
+        spawnRandomShape(targetMouse.x, targetMouse.y);
+
+        addResonance(2.0);
+        playGenerativeChime(1.4);
+
+        const hint = document.getElementById('interaction-hint');
+        if (hint) hint.style.opacity = '0';
+      });
+
+      window.addEventListener('pointermove', (e) => {
+        onUserInteractionActivity();
+
+        const normX = (e.clientX / window.innerWidth) * 2 - 1;
+        const normY = -(e.clientY / window.innerHeight) * 2 + 1;
+
+        const deltaMoveX = normX - targetMouse.x;
+        const deltaMoveY = normY - targetMouse.y;
+        accumulatedMovement += Math.sqrt(deltaMoveX * deltaMoveX + deltaMoveY * deltaMoveY);
+
+        targetMouse.x = normX;
+        targetMouse.y = normY;
+
+        if (isDragging) {
+          const deltaX = e.clientX - previousPointerPosition.x;
+          const deltaY = e.clientY - previousPointerPosition.y;
+
+          rotationVelocity.y = deltaX * 0.005;
+          rotationVelocity.x = deltaY * 0.005;
+
+          mainGroup.rotation.y += rotationVelocity.y;
+          mainGroup.rotation.x += rotationVelocity.x;
+
+          previousPointerPosition = { x: e.clientX, y: e.clientY };
+          addResonance(0.2);
+        }
+      });
+
+      window.addEventListener('pointerup', () => {
+        isDragging = false;
+        onUserInteractionActivity();
+      });
+
+      window.addEventListener('wheel', (e) => {
+        onUserInteractionActivity();
+        targetCameraDistance = Math.min(15, Math.max(4.5, targetCameraDistance + e.deltaY * 0.005));
+        addResonance(0.1);
+      }, { passive: true });
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight, false);
+      });
+    }
+
+    /* --------------------------------------------------------------------------
+       15. HAUPT-ANIMATIONSSCHLEIFE
+       -------------------------------------------------------------------------- */
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Zuverlässige Delta-Zeit-Berechnung via High-Res Timer
+      const now = performance.now();
+      const delta = Math.min(0.1, (now - lastFrameTime) / 1000); // Maximaler Clamp gegen Frame-Spikes
+      lastFrameTime = now;
+      totalElapsedTime += delta;
+
+      // Inaktivitäts- & 8-Bit Schlaf-Controller aktualisieren
+      updateIdleSystem(delta);
+
+      mouse.x += (targetMouse.x - mouse.x) * 0.06;
+      mouse.y += (targetMouse.y - mouse.y) * 0.06;
+
+      // 1. Prozeduraler Spawn-Trigger bei Mausbewegung
+      timeSinceLastSpawn += delta;
+      if (accumulatedMovement > 0.04 && timeSinceLastSpawn > nextSpawnInterval) {
+        spawnRandomShape(targetMouse.x, targetMouse.y);
+        accumulatedMovement = 0;
+        timeSinceLastSpawn = 0;
+        nextSpawnInterval = 0.08 + Math.random() * 0.22;
+      }
+
+      // 2. Autonome sublime Hintergrundmuster
+      timeSinceLastSublimePattern += delta;
+      if (timeSinceLastSublimePattern > nextSublimeInterval) {
+        spawnSublimePattern();
+        timeSinceLastSublimePattern = 0;
+        nextSublimeInterval = 10.0 + Math.random() * 14.0;
+      }
+
+      updateSpawnedShapes(delta, totalElapsedTime);
+      updateSublimePatterns(delta, totalElapsedTime);
+
+      cameraDistance += (targetCameraDistance - cameraDistance) * 0.08;
+      camera.position.z = cameraDistance;
+
+      if (!isDragging) {
+        rotationVelocity.x *= 0.95;
+        rotationVelocity.y *= 0.95;
+        mainGroup.rotation.y += rotationVelocity.y + 0.003;
+        mainGroup.rotation.x += rotationVelocity.x + Math.sin(totalElapsedTime * 0.3) * 0.0008;
+      }
+
+      pointLight1.position.x = Math.sin(totalElapsedTime * 0.8) * 5.5;
+      pointLight1.position.z = Math.cos(totalElapsedTime * 0.8) * 5.5;
+      pointLight2.position.x = -Math.sin(totalElapsedTime * 0.6) * 5.5;
+      pointLight2.position.z = -Math.cos(totalElapsedTime * 0.6) * 5.5;
+
+      /* --- A. 3D-Morphing der Geometrie --- */
+      if (coreMesh) {
+        const positions = coreMesh.geometry.attributes.position;
+        const origPositions = coreMesh.geometry.userData.origPositions;
+        const morphFreq = 1.3 * CONFIG.morphSpeed;
+        const morphTime = totalElapsedTime * CONFIG.morphSpeed + CONFIG.seed;
+
+        for (let i = 0; i < positions.count; i++) {
+          const ox = origPositions.getX(i);
+          const oy = origPositions.getY(i);
+          const oz = origPositions.getZ(i);
+
+          const wave = Math.sin(ox * morphFreq + morphTime) * Math.cos(oy * morphFreq + morphTime * 1.1) * Math.sin(oz * morphFreq + morphTime * 0.7);
+
+          let shockImpact = 0;
+          for (let s = 0; s < shockwaves.length; s++) {
+            const sw = shockwaves[s];
+            const dist = Math.sqrt(ox * ox + oy * oy + oz * oz);
+            shockImpact += Math.sin(dist * 5.0 - sw.time * 8.0) * Math.exp(-sw.time * 2.2) * sw.intensity * 0.35;
+          }
+
+          const displacement = 1.0 + (wave * 0.2) + shockImpact;
+          positions.setXYZ(i, ox * displacement, oy * displacement, oz * displacement);
+        }
+
+        positions.needsUpdate = true;
+        coreMesh.geometry.computeVertexNormals();
+        coreWireframe.rotation.copy(coreMesh.rotation);
+      }
+
+      for (let s = shockwaves.length - 1; s >= 0; s--) {
+        shockwaves[s].time += delta * 1.5;
+        if (shockwaves[s].time > 2.0) shockwaves.splice(s, 1);
+      }
+
+      /* --- B. Planetare Ringe rotieren --- */
+      if (ringGroup) {
+        ringGroup.rotation.z = totalElapsedTime * 0.05;
+      }
+
+      /* --- C. Partikelschwarm & Gravitation --- */
+      if (particleSystem) {
+        const pArray = particleGeometry.attributes.position.array;
+        const pCount = pArray.length / 3;
+        const mouse3D = new THREE.Vector3(mouse.x * 5, mouse.y * 4, 1);
+
+        for (let i = 0; i < pCount; i++) {
+          const idx = i * 3;
+          let px = pArray[idx];
+          let py = pArray[idx + 1];
+          let pz = pArray[idx + 2];
+
+          const angle = 0.0025 + (i % 4) * 0.0004;
+          const rx = px * Math.cos(angle) - pz * Math.sin(angle);
+          const rz = px * Math.sin(angle) + pz * Math.cos(angle);
+          px = rx;
+          pz = rz;
+
+          const dx = mouse3D.x - px;
+          const dy = mouse3D.y - py;
+          const dz = mouse3D.z - pz;
+          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+          if (dist < 3.8 && dist > 0.1) {
+            const pull = (1.0 - dist / 3.8) * 0.035 * CONFIG.gravityStrength;
+            px += (dx / dist) * pull;
+            py += (dy / dist) * pull;
+            pz += (dz / dist) * pull;
+          }
+
+          pArray[idx] = px;
+          pArray[idx + 1] = py;
+          pArray[idx + 2] = pz;
+        }
+
+        particleGeometry.attributes.position.needsUpdate = true;
+        particleSystem.rotation.y = -totalElapsedTime * 0.02;
+      }
+
+      /* --- D. Wetter-Partikel Simulation --- */
+      if (weatherParticles && weatherParticles.material.opacity > 0.01) {
+        const wPos = weatherGeometry.attributes.position.array;
+        const wVel = weatherGeometry.userData.velocities;
+        const isStorm = CONFIG.currentWeather === 'storm';
+
+        for (let i = 0; i < weatherCount; i++) {
+          const idx = i * 3;
+          wPos[idx + 1] += wVel[idx + 1] * (isStorm ? 2.2 : 1.0);
+          wPos[idx] += Math.sin(totalElapsedTime + i) * 0.02 + (isStorm ? 0.06 : 0.01);
+
+          if (wPos[idx + 1] < -12) {
+            wPos[idx + 1] = 12;
+            wPos[idx] = (Math.random() - 0.5) * 30;
+            wPos[idx + 2] = (Math.random() - 0.5) * 30;
+          }
+        }
+        weatherGeometry.attributes.position.needsUpdate = true;
+
+        if (isStorm && Math.random() > 0.988) {
+          pointLight1.intensity = 14.0;
+          pointLight2.intensity = 14.0;
+          setTimeout(() => {
+            pointLight1.intensity = 4.0;
+            pointLight2.intensity = 4.0;
+          }, 50);
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    /* --------------------------------------------------------------------------
+       16. UI EVENT-BINDINGS
+       -------------------------------------------------------------------------- */
+    window.onload = function () {
+      init3D();
+
+      document.querySelectorAll('.shape-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          onUserInteractionActivity();
+          const shape = e.currentTarget.dataset.shape;
+          setShape(shape);
+          showToast("Form gewechselt", `Morphologie auf ${e.currentTarget.innerText} angepasst`, "🔮");
+          playGenerativeChime(1.3);
+          addResonance(5);
+        });
+      });
+
+      document.getElementById('btn-mutate').addEventListener('click', () => {
+        onUserInteractionActivity();
+        mutateRandomly();
+      });
+
+      document.querySelectorAll('.weather-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          onUserInteractionActivity();
+          const weather = e.currentTarget.dataset.weather;
+          applyWeatherTheme(weather);
+          showToast("Atmosphäre geändert", `Wetter-Modus auf ${weather.toUpperCase()} gesetzt`, "🌦️");
+          playGenerativeChime(1.2);
+          addResonance(4);
+        });
+      });
+
+      const timeModes = ['auto', 'dawn', 'day', 'sunset', 'night'];
+      document.getElementById('btn-toggle-time').addEventListener('click', () => {
+        onUserInteractionActivity();
+        let nextIndex = (timeModes.indexOf(CONFIG.timeMode) + 1) % timeModes.length;
+        CONFIG.timeMode = timeModes[nextIndex];
+        syncTimeAndWeather();
+        playGenerativeChime(1.1);
+        addResonance(4);
+      });
+
+      const audioBtn = document.getElementById('btn-audio');
+      const iconOff = document.getElementById('audio-icon-off');
+      const iconOn = document.getElementById('audio-icon-on');
+      const audioLabel = document.getElementById('audio-label');
+
+      audioBtn.addEventListener('click', () => {
+        onUserInteractionActivity();
+        CONFIG.audioEnabled = !CONFIG.audioEnabled;
+        if (CONFIG.audioEnabled) {
+          initAudio();
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+          iconOff.classList.add('hidden');
+          iconOn.classList.remove('hidden');
+          audioLabel.innerText = 'Klang: An';
+          audioLabel.classList.add('text-emerald-400');
+          playGenerativeChime(1.5);
+          showToast("Klangsynthese aktiv", "Pentatonischer Raumklang eingeschaltet", "🎵");
+        } else {
+          iconOff.classList.remove('hidden');
+          iconOn.classList.add('hidden');
+          audioLabel.innerText = 'Klang';
+          audioLabel.classList.remove('text-emerald-400');
+        }
+      });
+
+      document.getElementById('btn-snapshot').addEventListener('click', () => {
+        onUserInteractionActivity();
+        renderer.render(scene, camera);
+        const dataUrl = renderer.domElement.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = `Aetheria_HD_${Date.now()}.png`;
+        link.href = dataUrl;
+        link.click();
+        showToast("Schnappschuss gesichert", "HD-Artwork heruntergeladen!", "📸");
+        addResonance(10);
+      });
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D Herzmodell - Safari-kompatibel</title>
+    <style>
+        :root {
+            --bg: #0b1120;
+            --panel: rgba(15, 23, 42, 0.92);
+            --border: rgba(255, 255, 255, 0.15);
+            --accent-red: #ef4444;
+            --text: #f8fafc;
+            --text-dim: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #webgl-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            touch-action: none;
+        }
+
+        .hud {
+            position: absolute;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .interactive {
+            pointer-events: auto;
+        }
+
+        header {
+            top: 16px;
+            left: 16px;
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge {
+            font-size: 0.65rem;
+            background: var(--accent-red);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* Linkes Steuerpanel */
+        .left-panel {
+            top: 65px;
+            left: 16px;
+            width: 270px;
+            background: var(--panel);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-dim);
+            margin-bottom: 6px;
+        }
+
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        button.btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        button.btn:active, button.btn.active {
+            background: var(--accent-red);
+            border-color: var(--accent-red);
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+        }
+
+        .vital-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            background: rgba(0, 0, 0, 0.35);
+            padding: 6px 10px;
+            border-radius: 6px;
+            margin-bottom: 4px;
+        }
+
+        .vital-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #38bdf8;
+        }
+
+        /* Rechtes Querschnittspanel */
+        .right-panel {
+            top: 16px;
+            right: 16px;
+            width: 250px;
+            background: var(--panel);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--accent-red);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent-red);
+            cursor: pointer;
+        }
+
+        /* Untere Legende */
+        .bottom-legend {
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--panel);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 6px 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+        }
+
+        #status-msg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1rem;
+            color: #94a3b8;
+            z-index: 5;
+            text-align: center;
+        }
+    </style>
+
+    <!-- Klassisches Three.js (funktioniert garantiert in Safari ohne Module/CORS-Hürde) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="status-msg">Initialisiere 3D-Ansicht...</div>
+    <div id="webgl-canvas"></div>
+
+    <header class="hud">
+        <h1>3D Herzmodell <span class="badge">Safari OK</span></h1>
+    </header>
+
+    <!-- Links: Vitalwerte & Szenarien -->
+    <div class="hud left-panel interactive">
+        <div>
+            <div class="section-title">Aktivitäts-Szenario</div>
+            <div class="scenario-grid">
+                <button class="btn" id="btn-schlafen">😴 Schlafen</button>
+                <button class="btn active" id="btn-ruhen">🪑 Ruhen</button>
+                <button class="btn" id="btn-laufen">🚶 Laufen</button>
+                <button class="btn" id="btn-rennen">🏃 Rennen</button>
+            </div>
+        </div>
+
+        <div>
+            <div class="section-title">Echtzeit-Werte</div>
+            <div class="vital-row">
+                <span style="font-size:0.8rem; color:var(--text-dim);">Puls</span>
+                <span class="vital-value" id="bpm-val">70 <span style="font-size:0.7rem">BPM</span></span>
+            </div>
+            <div class="vital-row">
+                <span style="font-size:0.8rem; color:var(--text-dim);">Pumpleistung</span>
+                <span class="vital-value" id="hzv-val">4.9 <span style="font-size:0.7rem">L/min</span></span>
+            </div>
+            <div class="vital-row">
+                <span style="font-size:0.8rem; color:var(--text-dim);">Blutdruck</span>
+                <span class="vital-value" id="bp-val">120/80</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rechts: Querschnitt Steuerung -->
+    <div class="hud right-panel interactive">
+        <div class="section-title">Innenansicht / Schnitt</div>
+        
+        <div class="toggle-group">
+            <label for="clip-toggle" style="font-size:0.85rem; cursor:pointer;">Querschnitt aktiv</label>
+            <input type="checkbox" id="clip-toggle">
+        </div>
+
+        <div id="slider-box" style="opacity: 0.35; pointer-events: none; transition: 0.2s;">
+            <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px;">
+                <span>Schnitt-Tiefe</span>
+                <span id="clip-pos">Mitte</span>
+            </div>
+            <input type="range" id="clip-slider" min="-1.6" max="1.6" step="0.05" value="0">
+        </div>
+
+        <button class="btn" id="btn-reset" style="margin-top:4px;">🎥 Ansicht zentrieren</button>
+    </div>
+
+    <!-- Unten: Sauerstoff Legende -->
+    <div class="hud bottom-legend">
+        <div class="legend-item">
+            <div class="dot" style="background:#2563eb; box-shadow:0 0 6px #2563eb;"></div>
+            <span>O₂-arm (Vene / RV)</span>
+        </div>
+        <div class="legend-item">
+            <div class="dot" style="background:#9333ea; box-shadow:0 0 6px #9333ea;"></div>
+            <span>Anreicherung (Lunge)</span>
+        </div>
+        <div class="legend-item">
+            <div class="dot" style="background:#ef4444; box-shadow:0 0 6px #ef4444;"></div>
+            <span>O₂-reich (LV / Aorta)</span>
+        </div>
+    </div>
+
+    <!-- Reines, natives Javascript ohne anfällige Module -->
+    <script>
+        window.addEventListener('load', function() {
+            var statusMsg = document.getElementById('status-msg');
+
+            // Prüfen, ob Three.js geladen ist
+            if (typeof THREE === 'undefined') {
+                statusMsg.innerHTML = "<span style='color:#ef4444;'>Three.js konnte nicht geladen werden.<br>Bitte Internetverbindung prüfen.</span>";
+                return;
+            }
+
+            /* --- 1. EIGENER, SAFARI-SICHERER ORBIT-CONTROLLER --- */
+            // Ersetzt OrbitControls komplett, verhindert Script-Konflikte & funktioniert auf Touch-Geräten
+            function createTouchOrbitControls(camera, domElement) {
+                var spherical = { radius: 7.5, theta: 0, phi: Math.PI / 2 };
+                var target = new THREE.Vector3(0, 0, 0);
+                var isDown = false;
+                var prevX = 0, prevY = 0;
+                var pinchDist = 0;
+
+                function updateCamera() {
+                    var sp = Math.sin(spherical.phi);
+                    camera.position.x = target.x + spherical.radius * sp * Math.sin(spherical.theta);
+                    camera.position.y = target.y + spherical.radius * Math.cos(spherical.phi);
+                    camera.position.z = target.z + spherical.radius * sp * Math.cos(spherical.theta);
+                    camera.lookAt(target);
+                }
+
+                // Maus-Events (Mac/PC)
+                domElement.addEventListener('mousedown', function(e) {
+                    isDown = true;
+                    prevX = e.clientX;
+                    prevY = e.clientY;
+                });
+
+                window.addEventListener('mouseup', function() { isDown = false; });
+
+                window.addEventListener('mousemove', function(e) {
+                    if (!isDown) return;
+                    var dx = e.clientX - prevX;
+                    var dy = e.clientY - prevY;
+                    prevX = e.clientX;
+                    prevY = e.clientY;
+
+                    spherical.theta -= dx * 0.008;
+                    spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi - dy * 0.008));
+                    updateCamera();
+                });
+
+                domElement.addEventListener('wheel', function(e) {
+                    e.preventDefault();
+                    spherical.radius = Math.max(2.5, Math.min(14, spherical.radius + e.deltaY * 0.006));
+                    updateCamera();
+                }, { passive: false });
+
+                // Touch-Events (iPad / iPhone Safari)
+                domElement.addEventListener('touchstart', function(e) {
+                    if (e.touches.length === 1) {
+                        isDown = true;
+                        prevX = e.touches[0].clientX;
+                        prevY = e.touches[0].clientY;
+                    } else if (e.touches.length === 2) {
+                        pinchDist = Math.hypot(
+                            e.touches[0].clientX - e.touches[1].clientX,
+                            e.touches[0].clientY - e.touches[1].clientY
+                        );
+                    }
+                }, { passive: true });
+
+                domElement.addEventListener('touchmove', function(e) {
+                    if (e.touches.length === 1 && isDown) {
+                        var dx = e.touches[0].clientX - prevX;
+                        var dy = e.touches[0].clientY - prevY;
+                        prevX = e.touches[0].clientX;
+                        prevY = e.touches[0].clientY;
+
+                        spherical.theta -= dx * 0.008;
+                        spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi - dy * 0.008));
+                        updateCamera();
+                    } else if (e.touches.length === 2) {
+                        var currentDist = Math.hypot(
+                            e.touches[0].clientX - e.touches[1].clientX,
+                            e.touches[0].clientY - e.touches[1].clientY
+                        );
+                        var diff = pinchDist - currentDist;
+                        spherical.radius = Math.max(2.5, Math.min(14, spherical.radius + diff * 0.02));
+                        pinchDist = currentDist;
+                        updateCamera();
+                    }
+                }, { passive: true });
+
+                domElement.addEventListener('touchend', function() { isDown = false; });
+
+                updateCamera();
+
+                return {
+                    reset: function() {
+                        spherical.radius = 7.5;
+                        spherical.theta = 0;
+                        spherical.phi = Math.PI / 2;
+                        updateCamera();
+                    }
+                };
+            }
+
+            /* --- 2. SZENARIEN & WERTE --- */
+            var scenarios = {
+                schlafen: { bpm: 48, hzv: 3.4, bp: "95/60", pump: 1.06, speed: 0.6 },
+                ruhen:    { bpm: 70, hzv: 4.9, bp: "120/80", pump: 1.12, speed: 1.0 },
+                laufen:   { bpm: 110, hzv: 9.8, bp: "140/85", pump: 1.20, speed: 1.7 },
+                rennen:   { bpm: 165, hzv: 18.2, bp: "175/95", pump: 1.28, speed: 2.5 }
+            };
+
+            var current = scenarios.ruhen;
+            var beatTimer = 0;
+
+            /* --- 3. THREE.JS BASIS SZENE --- */
+            var container = document.getElementById('webgl-canvas');
+            var scene = new THREE.Scene();
+
+            var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 7.5);
+
+            var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.localClippingEnabled = true;
+            container.appendChild(renderer.domElement);
+
+            var controls = createTouchOrbitControls(camera, renderer.domElement);
+
+            // Ausleuchtung
+            var ambLight = new THREE.AmbientLight(0xffffff, 0.85);
+            scene.add(ambLight);
+
+            var dirLight1 = new THREE.DirectionalLight(0xffffff, 1.1);
+            dirLight1.position.set(3, 4, 5);
+            scene.add(dirLight1);
+
+            var dirLight2 = new THREE.DirectionalLight(0x60a5fa, 0.7);
+            dirLight2.position.set(-3, -3, -4);
+            scene.add(dirLight2);
+
+            /* --- 4. SCHNITTEBENE --- */
+            var clipPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 10);
+            var clippingList = [clipPlane];
+
+            /* --- 5. 3D HERZ ANATOMIE --- */
+            var heartGroup = new THREE.Group();
+            scene.add(heartGroup);
+
+            var redMat = new THREE.MeshStandardMaterial({
+                color: 0xc41e1e, roughness: 0.35, side: THREE.DoubleSide, clippingPlanes: clippingList
+            });
+
+            var blueMat = new THREE.MeshStandardMaterial({
+                color: 0x1d4ed8, roughness: 0.35, side: THREE.DoubleSide, clippingPlanes: clippingList
+            });
+
+            var septumMat = new THREE.MeshStandardMaterial({
+                color: 0x6b1010, roughness: 0.6, side: THREE.DoubleSide, clippingPlanes: clippingList
+            });
+
+            // Linke Herzkammer
+            var leftVentGeo = new THREE.SphereGeometry(1.15, 32, 24);
+            leftVentGeo.scale(0.85, 1.25, 0.8);
+            var leftVent = new THREE.Mesh(leftVentGeo, redMat);
+            leftVent.position.set(0.4, -0.3, 0);
+            leftVent.rotation.z = -0.2;
+            heartGroup.add(leftVent);
+
+            // Rechte Herzkammer
+            var rightVentGeo = new THREE.SphereGeometry(0.95, 32, 24);
+            rightVentGeo.scale(0.8, 1.1, 0.75);
+            var rightVent = new THREE.Mesh(rightVentGeo, blueMat);
+            rightVent.position.set(-0.45, -0.25, 0.15);
+            rightVent.rotation.z = 0.15;
+            heartGroup.add(rightVent);
+
+            // Vorhöfe
+            var leftAtr = new THREE.Mesh(new THREE.SphereGeometry(0.65, 20, 20), redMat);
+            leftAtr.position.set(0.5, 0.8, -0.2);
+            heartGroup.add(leftAtr);
+
+            var rightAtr = new THREE.Mesh(new THREE.SphereGeometry(0.7, 20, 20), blueMat);
+            rightAtr.position.set(-0.65, 0.65, 0.1);
+            heartGroup.add(rightAtr);
+
+            // Herzscheidewand (im Querschnitt sichtbar)
+            var septum = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.7, 1.2), septumMat);
+            septum.position.set(-0.05, -0.3, 0.05);
+            heartGroup.add(septum);
+
+            // Aorta
+            var aortaCurve = new THREE.CatmullRomCurve3D([
+                new THREE.Vector3(0.1, 0.5, 0),
+                new THREE.Vector3(0.1, 1.35, 0),
+                new THREE.Vector3(0.4, 1.8, -0.2),
+                new THREE.Vector3(0.85, 1.6, -0.4),
+                new THREE.Vector3(0.9, 0.6, -0.5)
+            ]);
+            var aorta = new THREE.Mesh(new THREE.TubeGeometry(aortaCurve, 28, 0.25, 14, false), redMat);
+            heartGroup.add(aorta);
+
+            // 3 Aorten-Äste
+            for (var i = 0; i < 3; i++) {
+                var br = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.4), redMat);
+                br.position.set(0.4 + i * 0.16, 1.8 - i * 0.05, -0.25 - i * 0.05);
+                br.rotation.z = -0.2;
+                heartGroup.add(br);
+            }
+
+            // Pulmonalarterie (zur Lunge)
+            var pulmoCurve = new THREE.CatmullRomCurve3D([
+                new THREE.Vector3(-0.15, 0.2, 0.3),
+                new THREE.Vector3(-0.05, 1.0, 0.2),
+                new THREE.Vector3(-0.45, 1.25, -0.2),
+                new THREE.Vector3(-1.1, 1.1, -0.3)
+            ]);
+            var pulmo = new THREE.Mesh(new THREE.TubeGeometry(pulmoCurve, 24, 0.22, 14, false), blueMat);
+            heartGroup.add(pulmo);
+
+            // Hohlvene (Vena Cava)
+            var vena = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 2.2, 14), blueMat);
+            vena.position.set(-1.0, 0.5, -0.15);
+            heartGroup.add(vena);
+
+            /* --- 6. SAUERSTOFF-KREISLAUF & FARBWECHSEL --- */
+            var cyclePath = new THREE.CatmullRomCurve3D([
+                new THREE.Vector3(-1.0, 1.5, -0.15),
+                new THREE.Vector3(-0.65, 0.6, 0.1),
+                new THREE.Vector3(-0.4, -0.3, 0.2),
+                new THREE.Vector3(-0.05, 1.0, 0.2),
+                new THREE.Vector3(-1.6, 1.6, -0.8), // Lungenpassage (Sauerstoffaufnahme)
+                new THREE.Vector3(-1.2, 1.2, -1.5),
+                new THREE.Vector3(0.0, 0.7, -1.0),
+                new THREE.Vector3(0.45, 0.6, -0.2),
+                new THREE.Vector3(0.3, -0.4, 0.0),
+                new THREE.Vector3(0.1, 0.7, 0.0),
+                new THREE.Vector3(0.45, 1.8, -0.2), // Durch Aorta raus
+                new THREE.Vector3(0.9, 0.0, -0.5),
+                new THREE.Vector3(0.1, -1.8, -0.7), // Körpergewebe (Verbrauch)
+                new THREE.Vector3(-1.0, -0.7, -0.15)
+            ], true);
+
+            var PARTICLE_COUNT = 130;
+            var particleGeo = new THREE.SphereGeometry(0.048, 8, 8);
+            var particles = [];
+
+            var colBlue = new THREE.Color(0x2563eb);
+            var colRed = new THREE.Color(0xef4444);
+
+            for (var p = 0; p < PARTICLE_COUNT; p++) {
+                var pMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                var pMesh = new THREE.Mesh(particleGeo, pMat);
+                pMesh.userData = { progress: p / PARTICLE_COUNT };
+                heartGroup.add(pMesh);
+                particles.push(pMesh);
+            }
+
+            /* --- 7. EVENT-LISTENER & UI --- */
+            var clipToggle = document.getElementById('clip-toggle');
+            var clipSlider = document.getElementById('clip-slider');
+            var sliderBox = document.getElementById('slider-box');
+            var clipPosText = document.getElementById('clip-pos');
+
+            clipToggle.addEventListener('change', function(e) {
+                if (e.target.checked) {
+                    sliderBox.style.opacity = '1';
+                    sliderBox.style.pointerEvents = 'auto';
+                    clipPlane.constant = parseFloat(clipSlider.value);
+                } else {
+                    sliderBox.style.opacity = '0.35';
+                    sliderBox.style.pointerEvents = 'none';
+                    clipPlane.constant = 10;
+                }
+            });
+
+            clipSlider.addEventListener('input', function(e) {
+                var val = parseFloat(e.target.value);
+                clipPlane.constant = val;
+                clipPosText.innerText = val === 0 ? "Mitte" : (val > 0 ? "+" : "") + val.toFixed(2);
+            });
+
+            function setMode(key, btn) {
+                current = scenarios[key];
+                var allBtns = document.querySelectorAll('.scenario-grid .btn');
+                for (var b = 0; b < allBtns.length; b++) allBtns[b].classList.remove('active');
+                btn.classList.add('active');
+
+                document.getElementById('bpm-val').innerHTML = current.bpm + ' <span style="font-size:0.7rem">BPM</span>';
+                document.getElementById('hzv-val').innerHTML = current.hzv + ' <span style="font-size:0.7rem">L/min</span>';
+                document.getElementById('bp-val').innerText = current.bp;
+            }
+
+            document.getElementById('btn-schlafen').onclick = function() { setMode('schlafen', this); };
+            document.getElementById('btn-ruhen').onclick = function() { setMode('ruhen', this); };
+            document.getElementById('btn-laufen').onclick = function() { setMode('laufen', this); };
+            document.getElementById('btn-rennen').onclick = function() { setMode('rennen', this); };
+
+            document.getElementById('btn-reset').onclick = function() {
+                controls.reset();
+            };
+
+            window.addEventListener('resize', function() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // Lade-Meldung ausblenden
+            if (statusMsg) statusMsg.style.display = 'none';
+
+            /* --- 8. ANIMATIONSSCHLEIFE --- */
+            var clock = new THREE.Clock();
+
+            function renderLoop() {
+                requestAnimationFrame(renderLoop);
+
+                var delta = clock.getDelta();
+                beatTimer += delta * (current.bpm / 60);
+
+                // Herzschlag-Pulsieren
+                var phase = beatTimer % 1;
+                var pump = 0;
+                if (phase < 0.18) {
+                    pump = Math.sin((phase / 0.18) * Math.PI) * 0.05;
+                } else if (phase > 0.22 && phase < 0.55) {
+                    pump = Math.sin(((phase - 0.22) / 0.33) * Math.PI) * (current.pump - 1.0);
+                }
+
+                var s = 1.0 + pump;
+                leftVent.scale.set(0.85 * s, 1.25 * (2.0 - s * 0.95), 0.8 * s);
+                rightVent.scale.set(0.8 * s, 1.1 * (2.0 - s * 0.95), 0.75 * s);
+
+                // Blutpartikel und Sauerstoffanreicherung (Blau -> Rot -> Blau)
+                var step = delta * 0.11 * current.speed;
+
+                for (var i = 0; i < particles.length; i++) {
+                    var p = particles[i];
+                    p.userData.progress = (p.userData.progress + step) % 1.0;
+                    var prg = p.userData.progress;
+
+                    p.position.copy(cyclePath.getPointAt(prg));
+
+                    if (prg < 0.28) {
+                        p.material.color.copy(colBlue); // Sauerstoffarm
+                    } else if (prg >= 0.28 && prg < 0.48) {
+                        // Oxygenierung in Lungenkapillaren
+                        var blend = (prg - 0.28) / 0.20;
+                        p.material.color.copy(colBlue).lerp(colRed, blend);
+                    } else if (prg >= 0.48 && prg < 0.82) {
+                        p.material.color.copy(colRed); // Sauerstoffreich
+                    } else {
+                        var blendBack = (prg - 0.82) / 0.18;
+                        p.material.color.copy(colRed).lerp(colBlue, blendBack);
+                    }
+                }
+
+                heartGroup.rotation.y = Math.sin(beatTimer * 0.15) * 0.08;
+
+                renderer.render(scene, camera);
+            }
+
+            renderLoop();
+        });
+    </script>
+</body>
+</html>
