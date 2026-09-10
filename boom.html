@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Abstract Ambient Environment</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        :root {
+            --ui-bg: rgba(255, 255, 255, 0.1);
+            --ui-border: rgba(255, 255, 255, 0.2);
+            --ui-text: rgba(255, 255, 255, 0.9);
+            --ui-blur: blur(16px);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            touch-action: none; 
+            cursor: none;
+        }
+
+        #bg-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            transition: background 1.5s ease-in-out;
+        }
+
+        .theme-dawn { background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%); }
+        .theme-day { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
+        .theme-sunset { background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 50%, #861657 100%); }
+        .theme-night { background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); }
+
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: auto; 
+        }
+
+        #ui-panel {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 10;
+            background: var(--ui-bg);
+            backdrop-filter: var(--ui-blur);
+            -webkit-backdrop-filter: var(--ui-blur);
+            border: 1px solid var(--ui-border);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            color: var(--ui-text);
+            transition: all 0.5s ease;
+            min-width: 220px;
+        }
+
+        body.is-bright #ui-panel {
+            --ui-bg: rgba(0, 0, 0, 0.05);
+            --ui-border: rgba(0, 0, 0, 0.1);
+            --ui-text: rgba(0, 0, 0, 0.8);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 600;
+            opacity: 0.8;
+        }
+
+        select, button {
+            appearance: none;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.15);
+            font-weight: 600;
+            text-align: center;
+        }
+
+        select:hover, button:hover {
+            border-color: rgba(255, 255, 255, 0.6);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+        
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+        }
+
+        body.is-bright select, body.is-bright button {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            color: #000;
+        }
+        body.is-bright input[type="range"]::-webkit-slider-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        body.is-bright input[type="range"]::-webkit-slider-thumb {
+            background: #333;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="bg-container" class="theme-night"></div>
+    <canvas id="appCanvas"></canvas>
+
+    <div id="ui-panel">
+        <button id="audioToggle">Audio: OFF (Click to Start)</button>
+        
+        <div class="control-group">
+            <div class="control-header">
+                <label>Partikel Anzahl</label>
+                <label id="particleCountLabel">150</label>
+            </div>
+            <input type="range" id="particleSlider" min="10" max="1000" value="150">
+        </div>
+
+        <div class="control-group">
+            <label>Tageszeit (Licht)</label>
+            <select id="timeSelect">
+                <option value="auto">Systemzeit (Auto)</option>
+                <option value="dawn">Morgendämmerung</option>
+                <option value="day">Tag</option>
+                <option value="sunset">Sonnenuntergang</option>
+                <option value="night">Nacht</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Jahreszeit (Partikel)</label>
+            <select id="seasonSelect">
+                <option value="auto">Aktueller Monat (Auto)</option>
+                <option value="spring">Frühling</option>
+                <option value="summer">Sommer</option>
+                <option value="autumn">Herbst</option>
+                <option value="winter">Winter</option>
+            </select>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('appCanvas');
+        const ctx = canvas.getContext('2d');
+        const bgContainer = document.getElementById('bg-container');
+
+        const State = {
+            width: window.innerWidth,
+            height: window.innerHeight,
+            timeOfDay: 'night',
+            season: 'winter',
+            particles: [],
+            backgroundObjects: [],
+            shockwaves: [],
+            globalTime: 0,
+            pointer: {
+                x: window.innerWidth / 2,
+                y: window.innerHeight / 2,
+                lerpX: window.innerWidth / 2,
+                lerpY: window.innerHeight / 2,
+                isActive: false
+            }
+        };
+
+        const Config = {
+            colors: {
+                spring: ['#ffb7b2', '#e2f0cb', '#b5ead7', '#c7ceea'],
+                summer: ['#ff9a9e', '#fecfef', '#a18cd1', '#fbc2eb'],
+                autumn: ['#cb2d3e', '#ef473a', '#d76d77', '#ffaf7b'],
+                winter: ['#e0eafc', '#cfdef3', '#ffffff', '#a1c4fd']
+            }
+        };
+
+        let isAudioReady = false;
+        let isAudioPlaying = false;
+        let ambientSynth, explosionSynth, delay, reverb;
+
+        async function initAudio() {
+            if (isAudioReady) return;
+            await Tone.start();
+            
+            // Audio Routing: Synths -> Delay -> Reverb -> Master
+            reverb = new Tone.Reverb({ decay: 12, wet: 0.7 }).toDestination();
+            delay = new Tone.FeedbackDelay("8n", 0.6).connect(reverb);
+            
+            // Soft polyphonic synth for generative ambient chords
+            ambientSynth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: "sine" },
+                envelope: { attack: 3, decay: 1, sustain: 1, release: 8 }
+            }).connect(delay);
+            ambientSynth.volume.value = -12;
+
+            // Deep membrane synth for the shockwave
+            explosionSynth = new Tone.MembraneSynth({
+                pitchDecay: 0.05,
+                octaves: 4,
+                oscillator: { type: "sine" },
+                envelope: { attack: 0.01, decay: 0.8, sustain: 0.1, release: 2 }
+            }).connect(reverb);
+            explosionSynth.volume.value = -5;
+
+            // Generative Music Loop (Pentatonic Scale)
+            const pentatonicScale = ["C4", "D4", "F4", "G4", "A4", "C5"];
+            Tone.Transport.scheduleRepeat((time) => {
+                if (Math.random() > 0.4) {
+                    const note1 = pentatonicScale[Math.floor(Math.random() * pentatonicScale.length)];
+                    const note2 = pentatonicScale[Math.floor(Math.random() * pentatonicScale.length)];
+                    ambientSynth.triggerAttackRelease([note1, note2], "2n", time, 0.1);
+                }
+            }, "1m");
+
+            isAudioReady = true;
+            toggleAudio(true);
+        }
+
+        function toggleAudio(forceState) {
+            isAudioPlaying = forceState !== undefined ? forceState : !isAudioPlaying;
+            const btn = document.getElementById('audioToggle');
+            
+            if (isAudioPlaying) {
+                if(!isAudioReady) initAudio();
+                Tone.Transport.start();
+                btn.innerText = "Audio: ON";
+                btn.style.background = "rgba(46, 204, 113, 0.3)";
+            } else {
+                Tone.Transport.pause();
+                btn.innerText = "Audio: OFF";
+                btn.style.background = "rgba(255, 255, 255, 0.15)";
+            }
+        }
+
+        document.getElementById('audioToggle').addEventListener('click', () => toggleAudio());
+
+        function playExplosionSound(intensity = 1) {
+            if (isAudioReady && isAudioPlaying) {
+                // Adjust volume based on intensity (number of particles affected)
+                // Normalize intensity roughly between 0.2 and 1
+                const normalizedIntensity = Math.min(Math.max(intensity, 0.2), 1.5);
+                const volumeDB = -15 + (normalizedIntensity * 15); // Maps 0 to -15dB, 1 to 0dB
+                
+                explosionSynth.volume.rampTo(volumeDB, 0.05);
+                // Trigger a deep sub-bass drop, maybe pitch depends on intensity slightly
+                const note = intensity > 0.8 ? "C1" : (intensity > 0.4 ? "D1" : "E1");
+                explosionSynth.triggerAttackRelease(note, "8n");
+            }
+        }
+
+        function resizeCanvas() {
+            State.width = window.innerWidth;
+            State.height = window.innerHeight;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = State.width * dpr;
+            canvas.height = State.height * dpr;
+            ctx.scale(dpr, dpr);
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function updateEnvironment() {
+            const date = new Date();
+            const hour = date.getHours();
+            const month = date.getMonth(); 
+
+            const timeOverride = document.getElementById('timeSelect').value;
+            const seasonOverride = document.getElementById('seasonSelect').value;
+
+            if (timeOverride === 'auto') {
+                if (hour >= 5 && hour < 8) State.timeOfDay = 'dawn';
+                else if (hour >= 8 && hour < 17) State.timeOfDay = 'day';
+                else if (hour >= 17 && hour < 20) State.timeOfDay = 'sunset';
+                else State.timeOfDay = 'night';
+            } else {
+                State.timeOfDay = timeOverride;
+            }
+
+            if (seasonOverride === 'auto') {
+                if (month >= 2 && month <= 4) State.season = 'spring';
+                else if (month >= 5 && month <= 7) State.season = 'summer';
+                else if (month >= 8 && month <= 10) State.season = 'autumn';
+                else State.season = 'winter';
+            } else {
+                State.season = seasonOverride;
+            }
+
+            bgContainer.className = `theme-${State.timeOfDay}`;
+            document.body.classList.toggle('is-bright', State.timeOfDay === 'day' || State.timeOfDay === 'dawn');
+        }
+
+        class BackgroundEntity {
+            constructor() {
+                this.spawn();
+                this.x = Math.random() * State.width;
+                this.y = Math.random() * State.height;
+            }
+
+            spawn() {
+                this.size = Math.random() * 300 + 100;
+                this.vx = (Math.random() - 0.5) * 0.2;
+                this.vy = (Math.random() - 0.5) * 0.2;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotSpeed = (Math.random() - 0.5) * 0.005;
+                this.type = Math.floor(Math.random() * 3); // 0: Ring, 1: Triangle, 2: Hexagon
+                
+                const palette = Config.colors[State.season];
+                this.color = palette[Math.floor(Math.random() * palette.length)];
+                this.opacity = Math.random() * 0.05 + 0.02; // Very faint
+            }
+
+            update() {
+                this.rotation += this.rotSpeed;
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Wrap around edges
+                const pad = this.size;
+                if (this.x < -pad) this.x = State.width + pad;
+                if (this.x > State.width + pad) this.x = -pad;
+                if (this.y < -pad) this.y = State.height + pad;
+                if (this.y > State.height + pad) this.y = -pad;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 2;
+                // Invert for daylight
+                if (State.timeOfDay === 'day') {
+                    ctx.strokeStyle = '#000000';
+                    ctx.globalAlpha = this.opacity * 1.5;
+                } else {
+                    ctx.globalAlpha = this.opacity;
+                }
+
+                ctx.beginPath();
+                if (this.type === 0) {
+                    ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+                } else if (this.type === 1) {
+                    ctx.moveTo(0, -this.size);
+                    ctx.lineTo(this.size * 0.866, this.size * 0.5);
+                    ctx.lineTo(-this.size * 0.866, this.size * 0.5);
+                    ctx.closePath();
+                } else {
+                    for (let i = 0; i < 6; i++) {
+                        const theta = (i / 6) * Math.PI * 2;
+                        const px = Math.cos(theta) * this.size;
+                        const py = Math.sin(theta) * this.size;
+                        if (i === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    }
+                    ctx.closePath();
+                }
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor() {
+                this.spawn();
+            }
+
+            spawn() {
+                this.x = Math.random() * State.width;
+                this.y = Math.random() * State.height;
+                this.vx = (Math.random() - 0.5) * 1;
+                this.vy = (Math.random() - 0.5) * 1;
+                this.baseSize = Math.random() * 4 + 2;
+                this.size = this.baseSize;
+                
+                const palette = Config.colors[State.season];
+                this.color = palette[Math.floor(Math.random() * palette.length)];
+                
+                this.friction = 0.94;
+                this.mass = Math.random() * 1.5 + 0.5;
+                this.angle = Math.random() * Math.PI * 2;
+                this.angularVel = (Math.random() - 0.5) * 0.1;
+                this.sides = Math.floor(Math.random() * 3) + 3; 
+                this.life = Math.random() * Math.PI * 2; 
+            }
+
+            applyForce(fx, fy) {
+                this.vx += fx / this.mass;
+                this.vy += fy / this.mass;
+            }
+
+            update() {
+                this.life += 0.05;
+
+                if (State.season === 'winter') {
+                    this.vy += 0.03; 
+                    this.vx += Math.sin(this.life + this.y * 0.01) * 0.02; 
+                } else if (State.season === 'autumn') {
+                    const wind = Math.cos(this.y * 0.005 + State.globalTime) * 0.05;
+                    this.vx += wind;
+                    this.angle += this.angularVel;
+                } else if (State.season === 'summer') {
+                    this.vx += (Math.random() - 0.5) * 0.3;
+                    this.vy += (Math.random() - 0.5) * 0.3;
+                }
+
+                if (State.pointer.isActive) {
+                    const dx = this.x - State.pointer.lerpX;
+                    const dy = this.y - State.pointer.lerpY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const interactionRadius = 200;
+
+                    if (dist < interactionRadius && dist > 0.1) {
+                        const forceMag = (interactionRadius - dist) / interactionRadius;
+                        this.applyForce((dx / dist) * forceMag * 20, (dy / dist) * forceMag * 20);
+                    }
+                }
+
+                this.vx *= this.friction;
+                this.vy *= this.friction;
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < -50) this.x = State.width + 50;
+                if (this.x > State.width + 50) this.x = -50;
+                if (this.y < -50) this.y = State.height + 50;
+                if (this.y > State.height + 50) {
+                    if (State.season === 'winter') {
+                        this.y = -10;
+                        this.x = Math.random() * State.width;
+                        this.vx = 0;
+                    } else {
+                        this.y = -50;
+                    }
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                if (State.timeOfDay === 'night' || State.timeOfDay === 'sunset') {
+                    ctx.globalCompositeOperation = 'screen';
+                }
+
+                ctx.fillStyle = (State.timeOfDay === 'day') ? '#333333' : this.color;
+                ctx.strokeStyle = (State.timeOfDay === 'day') ? '#333333' : this.color;
+                ctx.globalAlpha = (State.timeOfDay === 'day') ? 0.6 : 0.9;
+
+                if (State.season === 'spring') {
+                    const currentSize = this.baseSize * (1 + 0.3 * Math.sin(this.life));
+                    ctx.beginPath();
+                    ctx.arc(0, 0, currentSize, 0, Math.PI * 2);
+                    ctx.fill();
+                } 
+                else if (State.season === 'summer') {
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(-this.vx * 4, -this.vy * 4);
+                    ctx.lineWidth = 2.5;
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 1.5, 0, Math.PI*2);
+                    ctx.fill();
+                }
+                else if (State.season === 'autumn') {
+                    ctx.rotate(this.angle);
+                    ctx.beginPath();
+                    for (let i = 0; i < this.sides; i++) {
+                        const theta = (i / this.sides) * Math.PI * 2;
+                        const px = Math.cos(theta) * this.baseSize * 1.5;
+                        const py = Math.sin(theta) * this.baseSize * 1.5;
+                        if (i === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                else if (State.season === 'winter') {
+                    const s = this.baseSize;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -s);
+                    ctx.lineTo(s * 0.5, 0);
+                    ctx.lineTo(0, s);
+                    ctx.lineTo(-s * 0.5, 0);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        class Shockwave {
+            constructor(x, y, intensity) {
+                this.x = x;
+                this.y = y;
+                this.radius = 10;
+                // Scale speed and visual weight based on intensity
+                this.speed = 20 + (intensity * 30); 
+                this.opacity = 1;
+                this.intensity = intensity;
+            }
+
+            update() {
+                this.radius += this.speed;
+                this.speed *= 0.94; 
+                this.opacity -= 0.025;
+            }
+
+            draw() {
+                if (this.opacity <= 0) return;
+                
+                ctx.save();
+                ctx.globalCompositeOperation = 'difference';
+                
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                
+                ctx.strokeStyle = `rgba(255, 255, 255, ${this.opacity * Math.min(this.intensity, 1)})`;
+                // Visual thickness correlates with intensity
+                ctx.lineWidth = (10 + (this.intensity * 20)) + (this.opacity * (10 + this.intensity * 20));
+                ctx.stroke();
+                
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity * 0.3 * Math.min(this.intensity, 1)})`;
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        }
+
+        let pointerTimeout;
+        function handlePointerMove(e) {
+            State.pointer.x = e.clientX;
+            State.pointer.y = e.clientY;
+            State.pointer.isActive = true;
+            
+            clearTimeout(pointerTimeout);
+            pointerTimeout = setTimeout(() => {
+                State.pointer.isActive = false;
+            }, 2000);
+        }
+
+        function triggerMassiveExplosion(ex, ey) {
+            const scanRadius = Math.max(State.width, State.height) * 0.25; // Area to count particles
+            let particlesInArea = 0;
+
+            // 1. Calculate Particle Density around click
+            for (let p of State.particles) {
+                const dx = p.x - ex;
+                const dy = p.y - ey;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < scanRadius) {
+                    particlesInArea++;
+                }
+            }
+
+            // Calculate intensity: e.g., 50 particles in area is a strong explosion.
+            // Map the count to an intensity multiplier (e.g., 0.1 to 2.5)
+            // Adjust the denominator based on typical particle counts to feel right
+            const expectedParticlesInArea = (State.particles.length * Math.PI * scanRadius * scanRadius) / (State.width * State.height);
+            // Prevent division by zero and create a sensible multiplier
+            let intensity = particlesInArea / (expectedParticlesInArea || 1);
+            
+            // Add a baseline and cap it
+            intensity = Math.max(0.2, Math.min(intensity, 3.0));
+
+            // Create shockwave with calculated intensity
+            State.shockwaves.push(new Shockwave(ex, ey, intensity));
+            
+            // Pass intensity to audio
+            playExplosionSound(intensity); 
+
+            // 2. Apply Physical Force scaled by intensity
+            const blastRadius = Math.max(State.width, State.height) * (0.4 * intensity); // Blast reaches further if stronger
+            const baseExplosionPower = 80; 
+
+            for (let p of State.particles) {
+                const dx = p.x - ex;
+                const dy = p.y - ey;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < blastRadius && dist > 0.1) {
+                    const force = (blastRadius - dist) / blastRadius; 
+                    // Power scales with intensity
+                    const appliedPower = baseExplosionPower * intensity; 
+                    p.applyForce((dx / dist) * force * appliedPower, (dy / dist) * force * appliedPower);
+                }
+            }
+        }
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerdown', (e) => {
+            if(!isAudioReady) initAudio();
+            
+            if (e.target.closest('#ui-panel')) return;
+
+            handlePointerMove(e);
+            triggerMassiveExplosion(e.clientX, e.clientY);
+            
+            State.pointer.lerpX = e.clientX;
+            State.pointer.lerpY = e.clientY;
+        });
+
+        document.getElementById('timeSelect').addEventListener('change', () => updateEnvironment());
+        document.getElementById('seasonSelect').addEventListener('change', () => {
+            updateEnvironment();
+            adjustParticleCount(parseInt(document.getElementById('particleSlider').value));
+        });
+
+        const particleSlider = document.getElementById('particleSlider');
+        const particleCountLabel = document.getElementById('particleCountLabel');
+        
+        particleSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            particleCountLabel.innerText = val;
+            adjustParticleCount(val);
+        });
+
+        function adjustParticleCount(targetCount) {
+            while (State.particles.length < targetCount) {
+                State.particles.push(new Particle());
+            }
+            while (State.particles.length > targetCount) {
+                State.particles.pop();
+            }
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '255,255,255';
+        }
+
+        function drawConnections() {
+            if (!State.pointer.isActive) return;
+            ctx.save();
+            const connectionRadius = 220;
+            ctx.lineWidth = 1.2;
+            
+            ctx.globalCompositeOperation = State.timeOfDay === 'day' ? 'multiply' : 'screen';
+
+            for (let p of State.particles) {
+                const dx = p.x - State.pointer.lerpX;
+                const dy = p.y - State.pointer.lerpY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < connectionRadius) {
+                    const alpha = (1 - (dist / connectionRadius)) * 0.7;
+                    ctx.beginPath();
+                    ctx.moveTo(State.pointer.lerpX, State.pointer.lerpY);
+                    ctx.lineTo(p.x, p.y);
+                    
+                    const strokeColor = State.timeOfDay === 'day' ? '30,30,30' : hexToRgb(p.color);
+                    ctx.strokeStyle = `rgba(${strokeColor}, ${alpha})`;
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
+
+        function drawCursor() {
+            if (!State.pointer.isActive) return;
+            State.pointer.lerpX += (State.pointer.x - State.pointer.lerpX) * 0.15;
+            State.pointer.lerpY += (State.pointer.y - State.pointer.lerpY) * 0.15;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(State.pointer.lerpX, State.pointer.lerpY, 20, 0, Math.PI * 2);
+            
+            if (State.timeOfDay === 'day') {
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            } else {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            }
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(State.pointer.lerpX, State.pointer.lerpY, 3, 0, Math.PI * 2);
+            ctx.fillStyle = State.timeOfDay === 'day' ? '#000' : '#fff';
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function animate() {
+            State.globalTime += 0.02;
+            ctx.clearRect(0, 0, State.width, State.height);
+
+            for (let bgObj of State.backgroundObjects) {
+                bgObj.update();
+                bgObj.draw();
+            }
+
+            drawConnections();
+
+            for (let p of State.particles) {
+                p.update();
+                p.draw();
+            }
+
+            for (let i = State.shockwaves.length - 1; i >= 0; i--) {
+                let sw = State.shockwaves[i];
+                sw.update();
+                sw.draw();
+                if (sw.opacity <= 0) {
+                    State.shockwaves.splice(i, 1);
+                }
+            }
+
+            drawCursor();
+
+            requestAnimationFrame(animate);
+        }
+
+        function init() {
+            updateEnvironment();
+            resizeCanvas(); 
+            
+            for(let i=0; i<8; i++) {
+                State.backgroundObjects.push(new BackgroundEntity());
+            }
+
+            adjustParticleCount(parseInt(document.getElementById('particleSlider').value));
+            
+            State.pointer.x = window.innerWidth / 2;
+            State.pointer.y = window.innerHeight / 2;
+            State.pointer.lerpX = State.pointer.x;
+            State.pointer.lerpY = State.pointer.y;
+
+            animate();
+            
+            setInterval(() => {
+                const isAutoTime = document.getElementById('timeSelect').value === 'auto';
+                const isAutoSeason = document.getElementById('seasonSelect').value === 'auto';
+                if (isAutoTime || isAutoSeason) {
+                    updateEnvironment();
+                }
+            }, 60000);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

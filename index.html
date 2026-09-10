@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="de" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Experimente – Übersicht</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+    }
+    .game-area {
+      position: relative;
+      overflow: hidden;
+      border-radius: 0.75rem;
+      background: #0b1220;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .locked-link {
+      pointer-events: none;
+      opacity: 0.4;
+      filter: grayscale(1);
+    }
+    .unlocked-pulse {
+      animation: unlockPulse 0.6s ease-out;
+    }
+    @keyframes unlockPulse {
+      0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.6); }
+      100% { box-shadow: 0 0 0 18px rgba(16,185,129,0); }
+    }
+
+    /* --- Rubbellos --- */
+    #scratchCanvas { position: absolute; inset: 0; touch-action: none; cursor: grab; }
+    .scratch-hint {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 4px; pointer-events: none; text-align: center; padding: 0 12px;
+    }
+
+    /* --- Puzzle --- */
+    .puzzle-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 3px;
+      width: 100%;
+      height: 100%;
+      padding: 3px;
+      box-sizing: border-box;
+    }
+    .puzzle-slot {
+      background: rgba(255,255,255,0.03);
+      border: 1px dashed rgba(255,255,255,0.15);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+    }
+    .puzzle-tile {
+      width: 100%;
+      height: 100%;
+      border-radius: 5px;
+      cursor: grab;
+      background-repeat: no-repeat;
+    }
+    .puzzle-slot.drag-over { border-color: #22d3ee; background: rgba(34,211,238,0.1); }
+
+    /* --- Skelett --- */
+    #skeletonStage { position: relative; width: 220px; height: 320px; margin: 0 auto; }
+    .bone-slot {
+      position: absolute;
+      border: 1.5px dashed rgba(255,255,255,0.22);
+      border-radius: 8px;
+      box-sizing: border-box;
+    }
+    .bone-slot.drag-over { border-color: #22d3ee; background: rgba(34,211,238,0.12); }
+    .bone-slot.filled { border-style: solid; border-color: rgba(255,255,255,0.06); }
+    .bone-piece {
+      position: absolute;
+      background: linear-gradient(145deg, #f1f5f9, #cbd5e1);
+      border: 1px solid rgba(0,0,0,0.25);
+      border-radius: 6px;
+      cursor: grab;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+    .bone-piece.placed { position: static; box-shadow: none; cursor: default; }
+    .bone-piece.dragging { opacity: 0.35; }
+    .rib-lines {
+      background-image: repeating-linear-gradient(0deg, transparent 0 8px, rgba(0,0,0,0.18) 8px 10px), linear-gradient(145deg, #f1f5f9, #cbd5e1);
+    }
+    #boneTray {
+      display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+      padding: 10px; min-height: 70px;
+    }
+
+    /* --- Punkt-Reflexspiel (Boom) --- */
+    #dotArea { cursor: default; }
+    .chase-dot {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #67e8f9, #0891b2);
+      box-shadow: 0 0 10px 2px rgba(34,211,238,0.6);
+      transition: left 0.5s ease, top 0.5s ease;
+      cursor: pointer;
+    }
+    .chase-dot.blinking {
+      background: radial-gradient(circle at 35% 35%, #fef08a, #f59e0b);
+      box-shadow: 0 0 16px 6px rgba(245,158,11,0.85);
+      animation: dotBlink 0.35s ease-in-out infinite;
+    }
+    @keyframes dotBlink {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.25; transform: scale(1.3); }
+    }
+  </style>
+</head>
+<body class="min-h-full flex flex-col items-center px-4 py-10">
+
+  <header class="text-center mb-10 max-w-xl">
+    <h1 class="text-2xl sm:text-3xl font-bold flex items-center justify-center gap-2">
+      <span>🧪</span> Experimente-Übersicht
+    </h1>
+    <p class="text-sm text-slate-400 mt-2">
+      Jeder Link ist verriegelt. Löse das kleine Spiel auf der Karte, um weiterzukommen.
+    </p>
+  </header>
+
+  <main class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 w-full max-w-6xl">
+
+    <!-- ============ KARTE 1: ACTION (Rubbellos) ============ -->
+    <section class="glass-panel rounded-2xl p-4 flex flex-col gap-3">
+      <div>
+        <h2 class="font-bold text-lg flex items-center gap-2">🌌 Aetheria</h2>
+        <p class="text-xs text-slate-400">Generative 3D-Welt</p>
+      </div>
+
+      <div id="scratchArea" class="game-area" style="height: 200px;">
+        <div class="scratch-hint">
+          <span class="text-3xl">🌌</span>
+          <span class="text-sm font-semibold text-slate-200">Aetheria</span>
+          <span class="text-[11px] text-slate-400">Generative 3D-Welt</span>
+        </div>
+        <canvas id="scratchCanvas"></canvas>
+      </div>
+      <p id="scratchStatus" class="text-[11px] text-center text-amber-300">🪙 Zum Freischalten rubbeln</p>
+
+      <a id="linkAction" href="action.html" class="locked-link text-center py-2 rounded-lg bg-cyan-600 text-white font-semibold text-sm transition">
+        Öffnen →
+      </a>
+    </section>
+
+    <!-- ============ KARTE 2: ACTION 2 (Puzzle) ============ -->
+    <section class="glass-panel rounded-2xl p-4 flex flex-col gap-3">
+      <div>
+        <h2 class="font-bold text-lg flex items-center gap-2">🎧 Aetheria II</h2>
+        <p class="text-xs text-slate-400">Klangfeld</p>
+      </div>
+
+      <div id="puzzleArea" class="game-area" style="height: 200px;">
+        <div class="puzzle-grid" id="puzzleGrid"></div>
+      </div>
+      <p id="puzzleStatus" class="text-[11px] text-center text-amber-300">🧩 Teile in die richtige Reihenfolge ziehen</p>
+
+      <a id="linkAction2" href="action2.html" class="locked-link text-center py-2 rounded-lg bg-purple-600 text-white font-semibold text-sm transition">
+        Öffnen →
+      </a>
+    </section>
+
+    <!-- ============ KARTE 3: HEART (Skelett) ============ -->
+    <section class="glass-panel rounded-2xl p-4 flex flex-col gap-3">
+      <div>
+        <h2 class="font-bold text-lg flex items-center gap-2">🫀 KardioSim 3D</h2>
+        <p class="text-xs text-slate-400">Vergleichende Herzphysiologie</p>
+      </div>
+
+      <div id="skeletonArea" class="game-area p-2" style="min-height: 340px;">
+        <div id="skeletonStage">
+          <!-- Zielumrisse -->
+          <div class="bone-slot" data-piece="skull" style="width:46px;height:46px;border-radius:50%;top:0;left:50%;transform:translateX(-50%);"></div>
+          <div class="bone-slot" data-piece="spine" style="width:26px;height:120px;top:44px;left:50%;transform:translateX(-50%);"></div>
+          <div class="bone-slot" data-piece="pelvis" style="width:60px;height:30px;top:166px;left:50%;transform:translateX(-50%);border-radius:10px;"></div>
+          <div class="bone-slot" data-piece="armL" style="width:14px;height:88px;top:60px;left:calc(50% - 46px);transform:rotate(-24deg);"></div>
+          <div class="bone-slot" data-piece="armR" style="width:14px;height:88px;top:60px;left:calc(50% + 34px);transform:rotate(24deg);"></div>
+          <div class="bone-slot" data-piece="legL" style="width:18px;height:110px;top:196px;left:calc(50% - 30px);transform:rotate(-8deg);"></div>
+          <div class="bone-slot" data-piece="legR" style="width:18px;height:110px;top:196px;left:calc(50% + 14px);transform:rotate(8deg);"></div>
+        </div>
+        <div id="boneTray"></div>
+      </div>
+      <p id="skeletonStatus" class="text-[11px] text-center text-amber-300">💀 Skelett zusammensetzen</p>
+
+      <a id="linkHeart" href="heart.html" class="locked-link text-center py-2 rounded-lg bg-rose-600 text-white font-semibold text-sm transition">
+        Öffnen →
+      </a>
+    </section>
+
+    <!-- ============ KARTE 4: BOOM (Punkt verfolgen) ============ -->
+    <section class="glass-panel rounded-2xl p-4 flex flex-col gap-3">
+      <div>
+        <h2 class="font-bold text-lg flex items-center gap-2">💥 Ambient Environment</h2>
+        <p class="text-xs text-slate-400">Abstract Ambient Environment</p>
+      </div>
+
+      <div id="dotArea" class="game-area" style="height: 200px;"></div>
+      <p id="dotStatus" class="text-[11px] text-center text-amber-300">👁️ Folge dem Punkt – klick ihn, wenn er blinkt!</p>
+
+      <a id="linkBoom" href="boom.html" class="locked-link text-center py-2 rounded-lg bg-amber-600 text-white font-semibold text-sm transition">
+        Öffnen →
+      </a>
+    </section>
+
+  </main>
+
+  <footer class="mt-10 text-[11px] text-slate-500">
+    <button id="resetProgressBtn" class="underline hover:text-slate-300">Fortschritt zurücksetzen</button>
+  </footer>
+
+  <script>
+    /* ===================== Hilfsfunktionen: Freischalten ===================== */
+    function unlockLink(linkEl, statusEl, storageKey, label) {
+      localStorage.setItem(storageKey, '1');
+      linkEl.classList.remove('locked-link');
+      linkEl.classList.add('unlocked-pulse');
+      if (statusEl) {
+        statusEl.textContent = '✅ Freigeschaltet!';
+        statusEl.classList.remove('text-amber-300');
+        statusEl.classList.add('text-emerald-400');
+      }
+    }
+
+    function isUnlocked(storageKey) {
+      return localStorage.getItem(storageKey) === '1';
+    }
+
+    /* ===================== 1. Rubbellos (Action) ===================== */
+    function initScratchCard() {
+      const area = document.getElementById('scratchArea');
+      const canvas = document.getElementById('scratchCanvas');
+      const ctx = canvas.getContext('2d');
+      const link = document.getElementById('linkAction');
+      const status = document.getElementById('scratchStatus');
+      const storageKey = 'exp_action_unlocked';
+      let solved = false;
+      let moveCount = 0;
+
+      function paintScratchLayer() {
+        const w = canvas.width, h = canvas.height;
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, '#94a3b8');
+        grad.addColorStop(0.5, '#cbd5e1');
+        grad.addColorStop(1, '#64748b');
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = 'rgba(15,23,42,0.55)';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🪙 Hier rubbeln', w / 2, h / 2);
+      }
+
+      function resize() {
+        canvas.width = area.clientWidth;
+        canvas.height = area.clientHeight;
+        if (!solved) paintScratchLayer();
+      }
+
+      if (isUnlocked(storageKey)) {
+        solved = true;
+        canvas.style.display = 'none';
+        unlockLink(link, status, storageKey);
+        status.textContent = '✅ Bereits freigeschaltet';
+        return;
+      }
+
+      resize();
+      window.addEventListener('resize', resize);
+
+      function erase(x, y) {
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.arc(x, y, 20, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function checkCleared() {
+        const w = canvas.width, h = canvas.height;
+        const data = ctx.getImageData(0, 0, w, h).data;
+        let cleared = 0, total = 0;
+        const step = 4 * 6; // jeden 6. Pixel prüfen (Performance)
+        for (let i = 3; i < data.length; i += step) {
+          total++;
+          if (data[i] === 0) cleared++;
+        }
+        if (cleared / total > 0.5 && !solved) {
+          solved = true;
+          canvas.style.transition = 'opacity 0.4s ease';
+          canvas.style.opacity = '0';
+          setTimeout(() => canvas.style.display = 'none', 400);
+          unlockLink(link, status, storageKey);
+        }
+      }
+
+      let isDown = false;
+      function pos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      }
+      canvas.addEventListener('pointerdown', (e) => { isDown = true; const p = pos(e); erase(p.x, p.y); });
+      window.addEventListener('pointerup', () => isDown = false);
+      canvas.addEventListener('pointermove', (e) => {
+        if (!isDown || solved) return;
+        const p = pos(e);
+        erase(p.x, p.y);
+        moveCount++;
+        if (moveCount % 5 === 0) checkCleared();
+      });
+    }
+
+    /* ===================== 2. Puzzle (Action 2) ===================== */
+    function initPuzzleCard() {
+      const grid = document.getElementById('puzzleGrid');
+      const link = document.getElementById('linkAction2');
+      const status = document.getElementById('puzzleStatus');
+      const storageKey = 'exp_action2_unlocked';
+      const cols = 3, rows = 2, tileCount = cols * rows;
+
+      if (isUnlocked(storageKey)) {
+        unlockLink(link, status, storageKey);
+        status.textContent = '✅ Bereits freigeschaltet';
+        grid.remove();
+        return;
+      }
+
+      // Puzzle-Motiv per Canvas generieren (kein externes Bild nötig)
+      const imgCanvas = document.createElement('canvas');
+      const imgW = 300, imgH = 200;
+      imgCanvas.width = imgW;
+      imgCanvas.height = imgH;
+      const ictx = imgCanvas.getContext('2d');
+      const g = ictx.createLinearGradient(0, 0, imgW, imgH);
+      g.addColorStop(0, '#a855f7');
+      g.addColorStop(1, '#6366f1');
+      ictx.fillStyle = g;
+      ictx.fillRect(0, 0, imgW, imgH);
+      ictx.fillStyle = 'rgba(255,255,255,0.9)';
+      ictx.font = 'bold 28px sans-serif';
+      ictx.textAlign = 'center';
+      ictx.fillText('🎧', imgW / 2, imgH / 2 - 14);
+      ictx.font = 'bold 20px sans-serif';
+      ictx.fillText('KLANGFELD', imgW / 2, imgH / 2 + 24);
+      const dataUrl = imgCanvas.toDataURL();
+
+      // Reihenfolge mischen (sicherstellen, dass sie nicht bereits gelöst ist)
+      let order = [...Array(tileCount).keys()];
+      do {
+        order = order.sort(() => Math.random() - 0.5);
+      } while (order.every((v, i) => v === i));
+
+      let draggedTile = null;
+
+      function createTile(correctIndex) {
+        const tile = document.createElement('div');
+        tile.className = 'puzzle-tile';
+        tile.draggable = true;
+        tile.dataset.correct = correctIndex;
+        const col = correctIndex % cols, row = Math.floor(correctIndex / cols);
+        tile.style.backgroundImage = `url(${dataUrl})`;
+        tile.style.backgroundSize = `${imgW}px ${imgH}px`;
+        tile.style.backgroundPosition = `-${col * (imgW / cols)}px -${row * (imgH / rows)}px`;
+        tile.addEventListener('dragstart', () => { draggedTile = tile; setTimeout(() => tile.style.opacity = '0.3', 0); });
+        tile.addEventListener('dragend', () => { tile.style.opacity = '1'; draggedTile = null; });
+        return tile;
+      }
+
+      const slots = [];
+      for (let i = 0; i < tileCount; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'puzzle-slot';
+        slot.dataset.slot = i;
+        slot.appendChild(createTile(order[i]));
+        slot.addEventListener('dragover', (e) => { e.preventDefault(); slot.classList.add('drag-over'); });
+        slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
+        slot.addEventListener('drop', (e) => {
+          e.preventDefault();
+          slot.classList.remove('drag-over');
+          if (!draggedTile || draggedTile.parentElement === slot) return;
+          const sourceSlot = draggedTile.parentElement;
+          const targetTile = slot.firstElementChild;
+          slot.appendChild(draggedTile);
+          if (targetTile) sourceSlot.appendChild(targetTile);
+          checkPuzzleSolved();
+        });
+        grid.appendChild(slot);
+        slots.push(slot);
+      }
+
+      function checkPuzzleSolved() {
+        const solved = slots.every(s => parseInt(s.firstElementChild.dataset.correct, 10) === parseInt(s.dataset.slot, 10));
+        if (solved) {
+          unlockLink(link, status, storageKey);
+          grid.querySelectorAll('.puzzle-tile').forEach(t => t.draggable = false);
+        }
+      }
+    }
+
+    /* ===================== 3. Skelett (Heart) ===================== */
+    function initSkeletonCard() {
+      const tray = document.getElementById('boneTray');
+      const stage = document.getElementById('skeletonStage');
+      const link = document.getElementById('linkHeart');
+      const status = document.getElementById('skeletonStatus');
+      const storageKey = 'exp_heart_unlocked';
+
+      const pieces = [
+        { id: 'skull',  label: '💀', w: 40, h: 40, extraClass: '' },
+        { id: 'spine',  label: '',   w: 20, h: 100, extraClass: 'rib-lines' },
+        { id: 'pelvis', label: '',   w: 54, h: 24, extraClass: '' },
+        { id: 'armL',   label: '',   w: 12, h: 78, extraClass: '' },
+        { id: 'armR',   label: '',   w: 12, h: 78, extraClass: '' },
+        { id: 'legL',   label: '',   w: 16, h: 96, extraClass: '' },
+        { id: 'legR',   label: '',   w: 16, h: 96, extraClass: '' }
+      ];
+
+      if (isUnlocked(storageKey)) {
+        unlockLink(link, status, storageKey);
+        status.textContent = '✅ Bereits freigeschaltet';
+        document.getElementById('skeletonArea').remove();
+        return;
+      }
+
+      let draggedPiece = null;
+      let placedCount = 0;
+
+      // Reihenfolge im Tray mischen
+      const shuffled = [...pieces].sort(() => Math.random() - 0.5);
+
+      shuffled.forEach(p => {
+        const el = document.createElement('div');
+        el.className = `bone-piece ${p.extraClass}`;
+        el.style.width = p.w + 'px';
+        el.style.height = p.h + 'px';
+        el.style.display = 'flex';
+        el.style.alignItems = 'center';
+        el.style.justifyContent = 'center';
+        el.style.fontSize = '20px';
+        el.textContent = p.label;
+        el.draggable = true;
+        el.dataset.piece = p.id;
+        el.addEventListener('dragstart', () => {
+          draggedPiece = el;
+          setTimeout(() => el.classList.add('dragging'), 0);
+        });
+        el.addEventListener('dragend', () => {
+          el.classList.remove('dragging');
+          draggedPiece = null;
+        });
+        tray.appendChild(el);
+      });
+
+      stage.querySelectorAll('.bone-slot').forEach(slot => {
+        slot.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          if (draggedPiece && draggedPiece.dataset.piece === slot.dataset.piece) {
+            slot.classList.add('drag-over');
+          }
+        });
+        slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
+        slot.addEventListener('drop', (e) => {
+          e.preventDefault();
+          slot.classList.remove('drag-over');
+          if (!draggedPiece || draggedPiece.dataset.piece !== slot.dataset.piece) return;
+          if (slot.classList.contains('filled')) return;
+
+          draggedPiece.classList.add('placed');
+          draggedPiece.draggable = false;
+          draggedPiece.style.position = 'absolute';
+          draggedPiece.style.top = '0';
+          draggedPiece.style.left = '0';
+          draggedPiece.style.width = '100%';
+          draggedPiece.style.height = '100%';
+          draggedPiece.style.display = 'flex';
+          draggedPiece.style.alignItems = 'center';
+          draggedPiece.style.justifyContent = 'center';
+          slot.appendChild(draggedPiece);
+          slot.classList.add('filled');
+          placedCount++;
+
+          if (placedCount === pieces.length) {
+            unlockLink(link, status, storageKey);
+          }
+        });
+      });
+    }
+
+    /* ===================== 4. Punkt verfolgen (Boom) ===================== */
+    function initDotCard() {
+      const area = document.getElementById('dotArea');
+      const link = document.getElementById('linkBoom');
+      const status = document.getElementById('dotStatus');
+      const storageKey = 'exp_boom_unlocked';
+
+      if (isUnlocked(storageKey)) {
+        unlockLink(link, status, storageKey);
+        status.textContent = '✅ Bereits freigeschaltet';
+        area.remove();
+        return;
+      }
+
+      const dot = document.createElement('div');
+      dot.className = 'chase-dot';
+      area.appendChild(dot);
+
+      const dotSize = 20;
+      let mouseX = -9999, mouseY = -9999;
+      let isBlinking = false;
+      let solved = false;
+      let blinkTimeout = null;
+
+      area.addEventListener('pointermove', (e) => {
+        const rect = area.getBoundingClientRect();
+        mouseX = e.clientX - rect.left;
+        mouseY = e.clientY - rect.top;
+      });
+      area.addEventListener('pointerleave', () => { mouseX = -9999; mouseY = -9999; });
+
+      function placeDotRandomly() {
+        const w = area.clientWidth - dotSize;
+        const h = area.clientHeight - dotSize;
+        const x = Math.random() * Math.max(w, 1);
+        const y = Math.random() * Math.max(h, 1);
+        dot.style.left = x + 'px';
+        dot.style.top = y + 'px';
+        return { x: x + dotSize / 2, y: y + dotSize / 2 };
+      }
+
+      function startBlink(center) {
+        isBlinking = true;
+        dot.classList.add('blinking');
+        blinkTimeout = setTimeout(() => {
+          isBlinking = false;
+          dot.classList.remove('blinking');
+        }, 900);
+      }
+
+      dot.addEventListener('click', () => {
+        if (solved) return;
+        if (isBlinking) {
+          solved = true;
+          clearTimeout(blinkTimeout);
+          clearInterval(tickHandle);
+          dot.classList.remove('blinking');
+          dot.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+          dot.style.opacity = '0';
+          dot.style.transform = 'scale(2)';
+          unlockLink(link, status, storageKey);
+        }
+      });
+
+      const tickHandle = setInterval(() => {
+        if (solved || isBlinking) return;
+        const center = placeDotRandomly();
+        // Nach dem Bewegen kurz warten, dann prüfen, ob die Maus in der Nähe ist
+        setTimeout(() => {
+          if (solved || isBlinking) return;
+          const dx = mouseX - center.x, dy = mouseY - center.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 55) startBlink(center);
+        }, 550);
+      }, 1200);
+
+      placeDotRandomly();
+    }
+
+    initScratchCard();
+    initPuzzleCard();
+    initSkeletonCard();
+    initDotCard();
+
+    document.getElementById('resetProgressBtn').addEventListener('click', () => {
+      localStorage.removeItem('exp_action_unlocked');
+      localStorage.removeItem('exp_action2_unlocked');
+      localStorage.removeItem('exp_heart_unlocked');
+      localStorage.removeItem('exp_boom_unlocked');
+      location.reload();
+    });
+  </script>
+</body>
+</html>
