@@ -305,7 +305,7 @@
     // Globale Three.js Variablen
     let scene, camera, renderer;
     let mainGroup; 
-    let coreMesh, coreWireframe, ringGroup;
+    let coreMesh, coreWireframe, ringGroup, ringMat1;
     let particleSystem, particleGeometry, particlePositions;
     let weatherParticles, weatherGeometry, weatherCount = 2000;
     let pointLight1, pointLight2, ambientLight, sunLight;
@@ -541,7 +541,7 @@
 
       const pal = COLOR_PALETTES[CONFIG.colorPaletteIndex];
       const ringGeo1 = new THREE.RingGeometry(3.6, 4.3, 64);
-      const ringMat1 = new THREE.MeshStandardMaterial({
+      ringMat1 = new THREE.MeshStandardMaterial({
         color: pal.rings,
         emissive: pal.emissive,
         emissiveIntensity: 0.6,
@@ -1264,6 +1264,10 @@
         coreMesh.material.emissive.setHex(pal.emissive);
         pointLight1.color.setHex(pal.light1);
         pointLight2.color.setHex(pal.light2);
+      }
+      if (ringMat1) {
+        ringMat1.color.setHex(pal.rings);
+        ringMat1.emissive.setHex(pal.emissive);
       }
     }
 

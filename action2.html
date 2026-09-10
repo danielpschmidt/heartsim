@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aetheria II – Klangfeld</title>
+
+  <!-- Tailwind CSS für modernes UI -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Three.js (3D WebGL Library) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&family=Space+Grotesk:wght@400;600;700&display=swap');
+
+    * {
+      user-select: none;
+      -webkit-user-select: none;
+      box-sizing: border-box;
+    }
+
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #000000;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #f8fafc;
+    }
+
+    .font-display {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    #canvas-container canvas {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
+
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+    }
+
+    .glass-btn {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .glass-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .glass-btn:active {
+      transform: translateY(0) scale(0.97);
+    }
+
+    .active-chip {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.35), rgba(217, 70, 239, 0.35)) !important;
+      border-color: rgba(217, 70, 239, 0.6) !important;
+      color: #ffffff !important;
+    }
+
+    #start-overlay {
+      background: radial-gradient(circle at center, rgba(30,10,50,0.95), rgba(0,0,0,0.98));
+    }
+
+    .pulse-ring {
+      animation: pulseRing 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+    }
+
+    @keyframes pulseRing {
+      0% { transform: scale(0.9); opacity: 0.9; }
+      100% { transform: scale(1.8); opacity: 0; }
+    }
+
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+</head>
+<body class="relative w-full h-full overflow-hidden bg-black">
+
+  <!-- Klick-zum-Start Overlay (Browser-Autoplay-Policy erfordert Nutzer-Geste) -->
+  <div id="start-overlay" class="absolute inset-0 z-50 flex items-center justify-center cursor-pointer">
+    <div class="glass-panel px-8 py-6 rounded-3xl flex flex-col items-center gap-3 text-center relative">
+      <div class="absolute inset-0 rounded-3xl border border-fuchsia-500/40 pulse-ring"></div>
+      <div class="text-4xl">🎧</div>
+      <h1 class="text-lg font-bold font-display bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 via-fuchsia-300 to-amber-200">
+        Aetheria II – Klangfeld
+      </h1>
+      <p class="text-xs text-slate-300 max-w-xs">
+        Klicke, um Audio zu aktivieren. Deine Mausbewegung erzeugt Musik –
+        Richtung, Geschwindigkeit &amp; Klicks steuern Klang und Form.
+      </p>
+      <div class="text-[10px] uppercase tracking-widest text-fuchsia-300 font-bold">Klicken zum Starten</div>
+    </div>
+  </div>
+
+  <!-- WebGL 3D Canvas Container -->
+  <div id="canvas-container" class="absolute inset-0 w-full h-full cursor-crosshair"></div>
+
+  <!-- Interaktives HUD Overlay -->
+  <div id="hud-overlay" class="absolute inset-0 pointer-events-none flex flex-col justify-between p-3 sm:p-5 lg:p-6 z-10">
+
+    <!-- Top: Status & Klang-Info -->
+    <div class="flex flex-wrap items-center justify-between gap-3 pointer-events-auto">
+      <div class="glass-panel px-4 py-2.5 rounded-2xl flex items-center gap-3">
+        <div class="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 to-fuchsia-600 shadow-lg">
+          <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-2v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-2c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-xs sm:text-sm font-bold tracking-wider font-display uppercase bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 via-fuchsia-300 to-amber-200">
+            Aetheria II <span class="text-[10px] font-mono font-normal text-cyan-300 px-1.5 py-0.5 rounded-full bg-cyan-950/60 border border-cyan-700/50">Klangfeld</span>
+          </h1>
+          <p id="note-status" class="text-[11px] text-slate-300 flex items-center gap-1.5">
+            <span id="status-pulse" class="inline-block w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+            <span id="note-text">–</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Geschwindigkeits-Anzeige -->
+      <div class="glass-panel px-4 py-2 rounded-2xl flex items-center gap-3">
+        <div class="text-right">
+          <div class="text-[9px] uppercase font-bold tracking-widest text-slate-400">Bewegungs-Energie</div>
+          <div id="speed-display" class="text-xs font-mono font-bold text-cyan-300">0%</div>
+        </div>
+        <div class="w-16 h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+          <div id="speed-bar" class="h-full bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-amber-400 w-0 transition-all duration-100"></div>
+        </div>
+      </div>
+
+      <!-- Erfahrungsstufe -->
+      <div class="glass-panel px-4 py-2.5 rounded-2xl flex items-center gap-3">
+        <div class="text-right">
+          <div class="text-[9px] uppercase font-bold tracking-widest text-slate-400">Resonanz-Erfahrung</div>
+          <div class="flex items-center justify-end gap-1.5">
+            <span id="xp-counter" class="text-sm font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-amber-300">0 XP</span>
+          </div>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700/80 flex items-center justify-center relative overflow-hidden shadow-inner">
+          <div id="level-ring" class="absolute bottom-0 w-full bg-gradient-to-t from-cyan-500 via-fuchsia-500 to-amber-400 transition-all duration-500" style="height: 0%;"></div>
+          <span id="level-badge" class="relative z-10 text-xs font-bold font-display text-white drop-shadow">Lvl 1</span>
+        </div>
+      </div>
+
+      <!-- Jahreszeit -->
+      <div class="glass-panel px-4 py-2.5 rounded-2xl flex items-center gap-2">
+        <span id="season-icon" class="text-lg">🌱</span>
+        <div>
+          <div class="text-[9px] uppercase font-bold tracking-widest text-slate-400">Jahreszeit</div>
+          <div id="season-label" class="text-xs font-mono font-bold text-emerald-300">Frühling</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mitte: Kurzer Hinweis -->
+    <div id="interaction-hint" class="pointer-events-none self-center text-center transition-opacity duration-700 my-auto">
+      <div class="glass-panel px-5 py-2.5 rounded-full inline-flex items-center gap-2.5 border border-cyan-500/30">
+        <span class="text-xs font-medium text-slate-200">Bewege die Maus für Melodien • Klicke für Akkorde &amp; Impulse • W A S D für Jahreszeiten</span>
+      </div>
+    </div>
+
+    <!-- Unten: Steuerung -->
+    <div class="flex items-center justify-between gap-3 pointer-events-auto">
+      <div class="glass-panel p-2.5 rounded-2xl flex items-center gap-2">
+        <button id="btn-audio" class="glass-btn active-chip px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+          <span id="audio-label">Klang: An</span>
+        </button>
+        <div class="flex items-center gap-1 px-1">
+          <kbd class="glass-btn px-1.5 py-1 rounded-md text-[10px] font-mono">W</kbd>
+          <kbd class="glass-btn px-1.5 py-1 rounded-md text-[10px] font-mono">A</kbd>
+          <kbd class="glass-btn px-1.5 py-1 rounded-md text-[10px] font-mono">S</kbd>
+          <kbd class="glass-btn px-1.5 py-1 rounded-md text-[10px] font-mono">D</kbd>
+        </div>
+      </div>
+
+      <div class="glass-panel px-4 py-2 rounded-2xl">
+        <div class="text-[9px] uppercase font-bold tracking-widest text-slate-400 text-right">Frequenz-Spektrum</div>
+        <div class="flex items-end gap-0.5 h-6 w-28">
+          <div id="band-bass" class="flex-1 bg-gradient-to-t from-fuchsia-500 to-fuchsia-300 rounded-sm" style="height: 5%;"></div>
+          <div id="band-mid" class="flex-1 bg-gradient-to-t from-cyan-500 to-cyan-300 rounded-sm" style="height: 5%;"></div>
+          <div id="band-treble" class="flex-1 bg-gradient-to-t from-amber-500 to-amber-300 rounded-sm" style="height: 5%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       AETHERIA II – KLANGFELD
+       Mausbewegung erzeugt generative Musik (Richtung, Geschwindigkeit, Klicks);
+       die entstehende Musik (Analyser-Daten) steuert wiederum die 3D-Grafik.
+       ========================================================================== */
+
+    const AUDIO_SCALES = {
+      minorPenta:  { semitones: [0, 3, 5, 7, 10] },        // Winter – kahl, dunkel
+      majorPenta:  { semitones: [0, 2, 4, 7, 9] },         // Frühling – warm, freundlich
+      lydian:      { semitones: [0, 2, 4, 6, 7, 9, 11] },  // Sommer – vital, schwebend-romantisch
+      mixolydian:  { semitones: [0, 2, 4, 5, 7, 9, 10] },  // Herbst – bunt, leicht schief, windig
+      aeolian:     { semitones: [0, 2, 3, 5, 7, 8, 10] }   // Winter (voll) – dunkles Moll
+    };
+
+    // W/A/S/D -> Jahreszeit. Jede Jahreszeit trägt ihre eigene Tonalität,
+    // Grundfrequenz, Klangfarbe (Hue) und Windstärke. Der Übergang zwischen
+    // den numerischen Werten wird pro Frame sanft überblendet (siehe seasonBlend).
+    const SEASONS = {
+      spring: { key: 'w', name: "Frühling", icon: "🌱", scale: 'majorPenta', rootFreq: 196.00, hue: 0.30, windAmount: 0.05, brightness: 900,  accent: "text-emerald-300" },
+      summer: { key: 'a', name: "Sommer",   icon: "🌻", scale: 'lydian',     rootFreq: 246.94, hue: 0.07, windAmount: 0.02, brightness: 1500, accent: "text-amber-300" },
+      autumn: { key: 's', name: "Herbst",   icon: "🍂", scale: 'mixolydian', rootFreq: 174.61, hue: 0.05, windAmount: 0.65, brightness: 300,  accent: "text-orange-300" },
+      winter: { key: 'd', name: "Winter",   icon: "❄️", scale: 'aeolian',    rootFreq: 130.81, hue: 0.58, windAmount: 0.18, brightness: -350, accent: "text-cyan-300" }
+    };
+    const SEASON_BY_KEY = { w: 'spring', a: 'summer', s: 'autumn', d: 'winter' };
+
+    const CONFIG = {
+      audioEnabled: true,
+      season: 'spring',
+      currentShape: 'sphere',
+      level: 1,
+      resonanceXP: 0
+    };
+
+    // Aktuell tatsächlich klingende/leuchtende Werte – nähern sich pro Frame
+    // sanft dem Ziel der aktiven Jahreszeit an (siehe updateSeasonBlend).
+    const seasonBlend = {
+      rootFreq: SEASONS.spring.rootFreq,
+      hue: SEASONS.spring.hue,
+      windAmount: SEASONS.spring.windAmount,
+      brightness: SEASONS.spring.brightness
+    };
+
+    function lerpHue(a, b, t) {
+      let diff = b - a;
+      if (diff > 0.5) diff -= 1;
+      if (diff < -0.5) diff += 1;
+      let result = a + diff * t;
+      if (result < 0) result += 1;
+      if (result >= 1) result -= 1;
+      return result;
+    }
+
+    function updateSeasonBlend(delta) {
+      const target = SEASONS[CONFIG.season];
+      const t = 1 - Math.pow(0.02, delta); // zeitbasierte sanfte Annäherung, ~3-4s Übergang
+      seasonBlend.rootFreq += (target.rootFreq - seasonBlend.rootFreq) * t;
+      seasonBlend.hue = lerpHue(seasonBlend.hue, target.hue, t);
+      seasonBlend.windAmount += (target.windAmount - seasonBlend.windAmount) * t;
+      seasonBlend.brightness += (target.brightness - seasonBlend.brightness) * t;
+    }
+
+    function setSeason(seasonKey) {
+      if (!SEASONS[seasonKey] || CONFIG.season === seasonKey) return;
+      CONFIG.season = seasonKey;
+      const s = SEASONS[seasonKey];
+      const iconEl = document.getElementById('season-icon');
+      const labelEl = document.getElementById('season-label');
+      if (iconEl) iconEl.innerText = s.icon;
+      if (labelEl) {
+        labelEl.innerText = s.name;
+        labelEl.className = `text-xs font-mono font-bold ${s.accent}`;
+      }
+    }
+
+    function noteFrequency(scaleDegreeIndex, octaveShift) {
+      const scale = AUDIO_SCALES[SEASONS[CONFIG.season].scale].semitones;
+      const semitone = scale[scaleDegreeIndex % scale.length];
+      const octaveFromDegree = Math.floor(scaleDegreeIndex / scale.length);
+      const totalSemitones = semitone + (octaveFromDegree + octaveShift) * 12;
+      return seasonBlend.rootFreq * Math.pow(2, totalSemitones / 12);
+    }
+
+    /* --------------------------------------------------------------------------
+       AUDIO ENGINE
+       -------------------------------------------------------------------------- */
+    let audioCtx = null;
+    let masterGain, analyser, analyserData;
+    let droneOsc1, droneOsc2, droneFilter, droneGain, dronePanner;
+    let windNoiseSource, windFilter, windGain;
+    let delayNode, delayFilter, delayFeedbackGain;
+    let lastNoteTime = 0;
+    const MIN_NOTE_INTERVAL = 0.11; // Sekunden – lässt jeder Note Raum, statt zu verschmieren
+    let accumulatedDistance = 0;
+    const NOTE_TRIGGER_DISTANCE = 68; // Pixel, bis eine neue Note ausgelöst wird
+
+    // Melodie-Gedächtnis: Töne bewegen sich in kleinen Schritten um ein Zentrum,
+    // statt bei jeder Mausbewegung wild zu springen – klingt dadurch wie eine
+    // absichtsvolle Melodie statt zufälligem Tongewirr.
+    let melodyDegree = 2;
+
+    function initAudio() {
+      if (audioCtx) return;
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioContext();
+
+      const compressor = audioCtx.createDynamicsCompressor();
+      compressor.threshold.setValueAtTime(-24, audioCtx.currentTime);
+      compressor.ratio.setValueAtTime(4, audioCtx.currentTime);
+
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.75;
+      analyserData = new Uint8Array(analyser.frequencyBinCount);
+
+      masterGain = audioCtx.createGain();
+      masterGain.gain.setValueAtTime(0.85, audioCtx.currentTime);
+
+      masterGain.connect(compressor);
+      compressor.connect(analyser);
+      analyser.connect(audioCtx.destination);
+
+      setupDelayBus();
+      setupDrone();
+      setupWindNoise();
+    }
+
+    // Echo-Bus: Melodie- und Akkordtöne senden zusätzlich hierher. Da alle
+    // Töne aus derselben Tonleiter stammen, verschmelzen die Wiederholungen
+    // automatisch harmonisch miteinander statt zu dissonieren.
+    function setupDelayBus() {
+      const now = audioCtx.currentTime;
+      delayNode = audioCtx.createDelay(2.0);
+      delayNode.delayTime.setValueAtTime(0.36, now);
+
+      delayFilter = audioCtx.createBiquadFilter();
+      delayFilter.type = 'lowpass';
+      delayFilter.frequency.setValueAtTime(2400, now);
+
+      delayFeedbackGain = audioCtx.createGain();
+      delayFeedbackGain.gain.setValueAtTime(0.4, now);
+
+      delayNode.connect(delayFilter);
+      delayFilter.connect(delayFeedbackGain);
+      delayFeedbackGain.connect(delayNode); // Feedback-Schleife für auslaufende Wiederholungen
+      delayFilter.connect(masterGain); // hörbarer Anteil (wet) fließt in den Hauptausgang
+    }
+
+    // Gefiltertes weißes Rauschen für den "windigen" Herbst-Charakter.
+    // Lautstärke folgt sanft der Windstärke der aktuellen Jahreszeit (seasonBlend.windAmount).
+    function setupWindNoise() {
+      const bufferSize = audioCtx.sampleRate * 2;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+      windNoiseSource = audioCtx.createBufferSource();
+      windNoiseSource.buffer = buffer;
+      windNoiseSource.loop = true;
+
+      windFilter = audioCtx.createBiquadFilter();
+      windFilter.type = 'bandpass';
+      windFilter.frequency.setValueAtTime(700, audioCtx.currentTime);
+      windFilter.Q.setValueAtTime(0.7, audioCtx.currentTime);
+
+      windGain = audioCtx.createGain();
+      windGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+
+      windNoiseSource.connect(windFilter);
+      windFilter.connect(windGain);
+      windGain.connect(masterGain);
+
+      windNoiseSource.start();
+    }
+
+    function updateWindNoise(elapsedTime) {
+      if (!audioCtx || !windGain) return;
+      const now = audioCtx.currentTime;
+      const targetGain = CONFIG.audioEnabled ? seasonBlend.windAmount * 0.13 : 0.0;
+      windGain.gain.setTargetAtTime(targetGain, now, 0.6);
+
+      const gust = 650 + Math.sin(elapsedTime * 0.35) * 250 * seasonBlend.windAmount + Math.sin(elapsedTime * 1.7) * 80 * seasonBlend.windAmount;
+      windFilter.frequency.setTargetAtTime(gust, now, 0.3);
+    }
+
+    // Kontinuierlicher "Theremin"-artiger Drone-Klang, der direkt an die
+    // Mausposition gekoppelt ist (Y = Filter-Cutoff, X = Panorama, Speed = Lautstärke).
+    function setupDrone() {
+      droneOsc1 = audioCtx.createOscillator();
+      droneOsc2 = audioCtx.createOscillator();
+      droneOsc1.type = 'sine';
+      droneOsc2.type = 'triangle';
+      droneOsc1.frequency.setValueAtTime(seasonBlend.rootFreq, audioCtx.currentTime);
+      droneOsc2.frequency.setValueAtTime(seasonBlend.rootFreq, audioCtx.currentTime);
+      droneOsc1.detune.setValueAtTime(-6, audioCtx.currentTime);
+      droneOsc2.detune.setValueAtTime(6, audioCtx.currentTime);
+
+      droneFilter = audioCtx.createBiquadFilter();
+      droneFilter.type = 'lowpass';
+      droneFilter.frequency.setValueAtTime(400, audioCtx.currentTime);
+      droneFilter.Q.setValueAtTime(4, audioCtx.currentTime);
+
+      dronePanner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null;
+
+      droneGain = audioCtx.createGain();
+      droneGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+
+      droneOsc1.connect(droneFilter);
+      droneOsc2.connect(droneFilter);
+
+      if (dronePanner) {
+        droneFilter.connect(dronePanner);
+        dronePanner.connect(droneGain);
+      } else {
+        droneFilter.connect(droneGain);
+      }
+      droneGain.connect(masterGain);
+
+      droneOsc1.start();
+      droneOsc2.start();
+    }
+
+    function updateDrone(normX, normY, speedNorm) {
+      if (!audioCtx || !CONFIG.audioEnabled) return;
+      const now = audioCtx.currentTime;
+
+      // Y-Position (0 oben .. 1 unten) steuert die Helligkeit des Klangs,
+      // die Jahreszeit hebt/senkt die Grund-Helligkeit sanft mit an
+      const cutoff = Math.max(120, 250 + (1 - normY) * 3200 + seasonBlend.brightness);
+      droneFilter.frequency.setTargetAtTime(cutoff, now, 0.08);
+
+      // Grundton gleitet sanft zur Jahreszeiten-Tonart (Portamento)
+      droneOsc1.frequency.setTargetAtTime(seasonBlend.rootFreq, now, 1.2);
+      droneOsc2.frequency.setTargetAtTime(seasonBlend.rootFreq, now, 1.2);
+
+      // X-Position steuert das Stereo-Panorama
+      if (dronePanner) {
+        dronePanner.pan.setTargetAtTime(Math.max(-1, Math.min(1, normX * 2 - 1)), now, 0.1);
+      }
+
+      // Bewegungsgeschwindigkeit steuert die Lautstärke der Drone (Stillstand = fast lautlos)
+      const targetGain = CONFIG.audioEnabled ? (0.015 + speedNorm * 0.11) : 0.0;
+      droneGain.gain.setTargetAtTime(targetGain, now, 0.15);
+    }
+
+    // Einzelne Melodie-Note, ausgelöst durch Mausbewegung. Statt einer harten
+    // Zupf-Hüllkurve klingt sie weich ein und aus (legato) und sendet einen
+    // Anteil an den Echo-Bus – so reihen sich die Töne zu einer Melodielinie.
+    function playMoveNote(scaleDegreeIndex, octaveShift, velocity, brightness) {
+      if (!audioCtx || !CONFIG.audioEnabled) return;
+      const now = audioCtx.currentTime;
+      const freq = noteFrequency(scaleDegreeIndex, octaveShift);
+
+      const osc = audioCtx.createOscillator();
+      const subOsc = audioCtx.createOscillator(); // leise Oktave darunter für Wärme
+      const gain = audioCtx.createGain();
+      const subGain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+      const delaySend = audioCtx.createGain();
+
+      // Nur bei sehr schneller Bewegung ein schärferes Sägezahn-Timbre,
+      // sonst rundes Dreieck/Sinus für einen weicheren, melodischeren Ton.
+      osc.type = velocity > 0.8 ? 'sawtooth' : (Math.random() < 0.35 ? 'sine' : 'triangle');
+      osc.frequency.setValueAtTime(freq, now);
+      subOsc.type = 'sine';
+      subOsc.frequency.setValueAtTime(freq / 2, now);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(Math.max(220, 700 + brightness * 4200 + seasonBlend.brightness), now);
+      filter.Q.setValueAtTime(0.9, now);
+
+      const attack = 0.05 + (1 - Math.min(1, velocity)) * 0.05;
+      const release = 0.9 + velocity * 0.6;
+      const peakGain = 0.045 + Math.min(1, velocity) * 0.12;
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(peakGain, now + attack);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + attack + release);
+
+      subGain.gain.setValueAtTime(0.0001, now);
+      subGain.gain.exponentialRampToValueAtTime(peakGain * 0.35, now + attack);
+      subGain.gain.exponentialRampToValueAtTime(0.0001, now + attack + release);
+
+      delaySend.gain.setValueAtTime(0.55, now);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      gain.connect(delaySend);
+      delaySend.connect(delayNode);
+
+      subOsc.connect(subGain);
+      subGain.connect(masterGain);
+
+      const stopTime = now + attack + release + 0.3;
+      osc.start(now);
+      osc.stop(stopTime);
+      subOsc.start(now);
+      subOsc.stop(stopTime);
+
+      return freq;
+    }
+
+    // Akkord (Terz-gestapelte Triade + leise Septime) + perkussiver "Kick"-Impuls,
+    // ausgelöst per Klick. Der Grundton folgt dem aktuellen Melodie-Zentrum,
+    // damit der Akkord immer zur gerade gespielten Melodie passt.
+    function playClickChord(scaleDegreeIndex, octaveShift) {
+      if (!audioCtx || !CONFIG.audioEnabled) return;
+      const now = audioCtx.currentTime;
+      const chordDegrees = [scaleDegreeIndex, scaleDegreeIndex + 2, scaleDegreeIndex + 4, scaleDegreeIndex + 6];
+      const chordGains = [0.13, 0.12, 0.1, 0.06];
+
+      chordDegrees.forEach((deg, idx) => {
+        const freq = noteFrequency(deg, octaveShift);
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const filter = audioCtx.createBiquadFilter();
+        const delaySend = audioCtx.createGain();
+
+        osc.type = idx === 0 ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(Math.max(300, 2600 + seasonBlend.brightness), now);
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(chordGains[idx], now + 0.03 + idx * 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.1);
+
+        delaySend.gain.setValueAtTime(0.4, now);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(masterGain);
+        gain.connect(delaySend);
+        delaySend.connect(delayNode);
+
+        osc.start(now);
+        osc.stop(now + 2.3);
+      });
+
+      // Perkussiver Kick: Sinus-Sweep von hoch nach tief
+      const kickOsc = audioCtx.createOscillator();
+      const kickGain = audioCtx.createGain();
+      kickOsc.type = 'sine';
+      kickOsc.frequency.setValueAtTime(160, now);
+      kickOsc.frequency.exponentialRampToValueAtTime(42, now + 0.16);
+      kickGain.gain.setValueAtTime(0.35, now);
+      kickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+      kickOsc.connect(kickGain);
+      kickGain.connect(masterGain);
+      kickOsc.start(now);
+      kickOsc.stop(now + 0.22);
+    }
+
+    // Kurzer "Tock"-Impuls, wenn eine zurückfallende Klick-Form auf dem Orb einschlägt.
+    function playImpactPling() {
+      if (!audioCtx || !CONFIG.audioEnabled) return;
+      const now = audioCtx.currentTime;
+      const freq = 320 + Math.random() * 480;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.55, now + 0.13);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.13, now + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.26);
+
+      osc.connect(gain);
+      gain.connect(masterGain);
+      if (delayNode) {
+        const delaySend = audioCtx.createGain();
+        delaySend.gain.setValueAtTime(0.3, now);
+        gain.connect(delaySend);
+        delaySend.connect(delayNode);
+      }
+
+      osc.start(now);
+      osc.stop(now + 0.3);
+    }
+
+    /* --------------------------------------------------------------------------
+       ERFAHRUNGSSTUFEN – der Orb wechselt mit steigendem Level sanft die Form
+       -------------------------------------------------------------------------- */
+    function getXPForLevel(lvl) {
+      return Math.floor(340 * Math.pow(lvl, 1.55));
+    }
+
+    function addResonance(points) {
+      CONFIG.resonanceXP += points;
+
+      const xpCounter = document.getElementById('xp-counter');
+      const levelRing = document.getElementById('level-ring');
+      const levelBadge = document.getElementById('level-badge');
+      if (xpCounter) xpCounter.innerText = `${Math.floor(CONFIG.resonanceXP).toLocaleString()} XP`;
+
+      const currentCap = getXPForLevel(CONFIG.level);
+      const prevCap = CONFIG.level > 1 ? getXPForLevel(CONFIG.level - 1) : 0;
+      const progress = Math.min(100, Math.max(0, ((CONFIG.resonanceXP - prevCap) / (currentCap - prevCap)) * 100));
+      if (levelRing) levelRing.style.height = `${progress}%`;
+
+      if (CONFIG.resonanceXP >= currentCap) {
+        CONFIG.level++;
+        if (levelBadge) levelBadge.innerText = `Lvl ${CONFIG.level}`;
+        const nextShape = SHAPES[(CONFIG.level - 1) % SHAPES.length];
+        transitionToShape(nextShape);
+        flashEnergy = Math.max(flashEnergy, 1.0);
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       THREE.JS SZENE
+       -------------------------------------------------------------------------- */
+    let scene, camera, renderer, mainGroup;
+    let particleSystem, particleGeometry, particlePositions, particleColors;
+    const PARTICLE_COUNT = 6000;
+
+    // Formen, durch die der Orb sich mit steigender Erfahrungsstufe entwickelt
+    // (12 Formen -> Zyklus wiederholt sich erst ab Level 13)
+    const SHAPES = [
+      'sphere', 'mobius', 'torus', 'crystal', 'lotus', 'gyro',
+      'knot2', 'diamond', 'shard', 'pyramid', 'facetedOrb', 'spiral'
+    ];
+    let activeCoreMeshes = []; // mehrere gleichzeitig während eines sanften Form-Übergangs
+    const SHAPE_FADE_IN = 2.0;
+    const SHAPE_FADE_OUT = 1.6;
+    let orbImpactRadius = 1.7; // grober Kollisionsradius des Orbs, pro Frame aktualisiert
+
+    let trailPoints = [];
+    const MAX_TRAIL_POINTS = 400;
+
+    let shockwaves = [];
+
+    // Klick-Mikroformen: jeder Klick spawnt eine zufällig andere kleine Form
+    let clickShapes = [];
+    const MAX_CLICK_SHAPES = 24;
+    const CLICK_SHAPE_GEOMETRIES = [
+      () => new THREE.TetrahedronGeometry(0.28 + Math.random() * 0.2),
+      () => new THREE.OctahedronGeometry(0.26 + Math.random() * 0.2),
+      () => new THREE.IcosahedronGeometry(0.24 + Math.random() * 0.18, 0),
+      () => new THREE.DodecahedronGeometry(0.25 + Math.random() * 0.16),
+      () => new THREE.TorusGeometry(0.26, 0.09, 12, 22),
+      () => new THREE.ConeGeometry(0.2, 0.5, 6),
+      () => new THREE.TorusKnotGeometry(0.2, 0.07, 60, 10, 2, 3),
+      () => new THREE.BoxGeometry(0.32, 0.32, 0.32)
+    ];
+
+    let mouse = new THREE.Vector2(0, 0);
+    let targetMouse = new THREE.Vector2(0, 0);
+    let prevScreenPos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    let currentSpeedNorm = 0;
+    let smoothedSpeedNorm = 0;
+
+    let lastFrameTime = performance.now();
+    let totalElapsedTime = 0;
+
+    let bassLevel = 0, midLevel = 0, trebleLevel = 0;
+    let smoothedBass = 0, smoothedMid = 0, smoothedTreble = 0;
+    let flashEnergy = 0;
+
+    function initScene() {
+      const container = document.getElementById('canvas-container');
+
+      scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x020617, 0.02);
+
+      camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 0.6, 8.5);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.3;
+      container.appendChild(renderer.domElement);
+
+      mainGroup = new THREE.Group();
+      scene.add(mainGroup);
+
+      setupLighting();
+      createCoreMeshInstance(CONFIG.currentShape);
+      createAmbientParticles();
+      createTrailSystem();
+
+      window.addEventListener('resize', onResize);
+      window.addEventListener('keydown', onKeyDown);
+      animate();
+    }
+
+    function onKeyDown(e) {
+      const key = e.key.toLowerCase();
+      const seasonKey = SEASON_BY_KEY[key];
+      if (seasonKey) setSeason(seasonKey);
+    }
+
+    function setupLighting() {
+      scene.add(new THREE.AmbientLight(0x1e1b4b, 1.4));
+
+      const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+      sun.position.set(5, 10, 7);
+      scene.add(sun);
+
+      window.pointLight1 = new THREE.PointLight(0x06b6d4, 4.0, 22);
+      window.pointLight1.position.set(4, 2, 4);
+      scene.add(window.pointLight1);
+
+      window.pointLight2 = new THREE.PointLight(0xd946ef, 4.0, 22);
+      window.pointLight2.position.set(-4, -2, -4);
+      scene.add(window.pointLight2);
+    }
+
+    // Möbius-Band-Generator (parametrische Fläche)
+    function createMobiusGeometry(radius, width, segmentsU, segmentsV) {
+      const geom = new THREE.BufferGeometry();
+      const positions = [];
+      const indices = [];
+
+      for (let i = 0; i <= segmentsU; i++) {
+        const u = (i / segmentsU) * Math.PI * 2;
+        for (let j = 0; j <= segmentsV; j++) {
+          const v = ((j / segmentsV) - 0.5) * width;
+          const x = (radius + v * Math.cos(u / 2)) * Math.cos(u);
+          const y = (radius + v * Math.cos(u / 2)) * Math.sin(u);
+          const z = v * Math.sin(u / 2);
+          positions.push(x, y, z);
+        }
+      }
+
+      const stride = segmentsV + 1;
+      for (let i = 0; i < segmentsU; i++) {
+        for (let j = 0; j < segmentsV; j++) {
+          const a = i * stride + j;
+          const b = (i + 1) * stride + j;
+          const c = (i + 1) * stride + (j + 1);
+          const d = i * stride + (j + 1);
+          indices.push(a, b, d, b, c, d, d, b, a, d, c, b);
+        }
+      }
+
+      geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geom.setIndex(indices);
+      geom.computeVertexNormals();
+      return geom;
+    }
+
+    // Helix-Röhre für die "Spirale"-Form
+    function createSpiralGeometry(radius, height, tubeRadius) {
+      const points = [];
+      const turns = 3.2;
+      const segments = 220;
+      for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        const angle = t * Math.PI * 2 * turns;
+        points.push(new THREE.Vector3(
+          Math.cos(angle) * radius * (0.4 + 0.6 * Math.sin(t * Math.PI)),
+          (t - 0.5) * height * 2,
+          Math.sin(angle) * radius * (0.4 + 0.6 * Math.sin(t * Math.PI))
+        ));
+      }
+      const curve = new THREE.CatmullRomCurve3(points);
+      return new THREE.TubeGeometry(curve, 220, tubeRadius, 10, false);
+    }
+
+    // Zufällige, aber pro Geometrie stabile Auseinanderbrech-Richtungen je Vertex
+    // (für den Shatter-Effekt bei extrem schneller Mausbewegung).
+    function computeShatterOffsets(geometry) {
+      const count = geometry.attributes.position.count;
+      const offsets = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++) {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(Math.random() * 2 - 1);
+        const mag = 0.6 + Math.random() * 1.3;
+        offsets[i * 3] = Math.sin(phi) * Math.cos(theta) * mag;
+        offsets[i * 3 + 1] = Math.sin(phi) * Math.sin(theta) * mag;
+        offsets[i * 3 + 2] = Math.cos(phi) * mag;
+      }
+      return offsets;
+    }
+
+    function generateGeometryForShape(shape) {
+      let geo;
+      switch (shape) {
+        case 'mobius':
+          geo = createMobiusGeometry(1.35, 0.65, 170, 26);
+          break;
+        case 'torus':
+          geo = new THREE.TorusKnotGeometry(1.0, 0.32, 190, 34, 2, 3);
+          break;
+        case 'crystal':
+          geo = new THREE.IcosahedronGeometry(1.55, 3);
+          break;
+        case 'lotus':
+          geo = new THREE.TorusGeometry(1.2, 0.48, 34, 120);
+          break;
+        case 'gyro':
+          geo = new THREE.DodecahedronGeometry(1.45, 4);
+          break;
+        case 'knot2':
+          geo = new THREE.TorusKnotGeometry(1.05, 0.26, 200, 24, 3, 7);
+          break;
+        case 'diamond':
+          geo = new THREE.OctahedronGeometry(1.5, 0);
+          geo.scale(1, 1.55, 1);
+          break;
+        case 'shard':
+          geo = new THREE.ConeGeometry(1.15, 2.4, 5);
+          break;
+        case 'pyramid':
+          geo = new THREE.TetrahedronGeometry(1.7, 1);
+          break;
+        case 'facetedOrb':
+          geo = new THREE.SphereGeometry(1.5, 9, 6);
+          break;
+        case 'spiral':
+          geo = createSpiralGeometry(1.15, 1.6, 0.16);
+          break;
+        case 'sphere':
+        default:
+          geo = new THREE.IcosahedronGeometry(1.55, 28);
+          break;
+      }
+      geo.userData = {
+        origPositions: geo.attributes.position.clone(),
+        shatterOffsets: computeShatterOffsets(geo)
+      };
+      return geo;
+    }
+
+    // Erzeugt eine neue Orb-Instanz, die sanft einblendet (Skalierung + Opazität).
+    function createCoreMeshInstance(shape) {
+      const geometry = generateGeometryForShape(shape);
+
+      const material = new THREE.MeshPhysicalMaterial({
+        color: 0xec4899,
+        emissive: 0x8b5cf6,
+        emissiveIntensity: 0.4,
+        roughness: 0.15,
+        metalness: 0.7,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.1,
+        transparent: true,
+        opacity: 0.0,
+        side: THREE.DoubleSide
+      });
+
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.scale.set(0.01, 0.01, 0.01);
+      mainGroup.add(mesh);
+
+      const wireMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.0,
+        blending: THREE.AdditiveBlending
+      });
+      const wireMesh = new THREE.Mesh(geometry, wireMat);
+      wireMesh.scale.copy(mesh.scale);
+      mainGroup.add(wireMesh);
+
+      const entry = {
+        mesh, wireMesh,
+        origPositions: geometry.userData.origPositions,
+        shatterOffsets: geometry.userData.shatterOffsets,
+        birth: totalElapsedTime,
+        removing: false,
+        removeStart: 0
+      };
+      activeCoreMeshes.push(entry);
+      return entry;
+    }
+
+    // Blendet die aktuelle(n) Orb-Instanz(en) sanft aus und die neue Form sanft ein.
+    function transitionToShape(shape) {
+      CONFIG.currentShape = shape;
+      activeCoreMeshes.forEach(entry => {
+        if (!entry.removing) {
+          entry.removing = true;
+          entry.removeStart = totalElapsedTime;
+        }
+      });
+      createCoreMeshInstance(shape);
+    }
+
+    function createAmbientParticles() {
+      particleGeometry = new THREE.BufferGeometry();
+      particlePositions = new Float32Array(PARTICLE_COUNT * 3);
+      particleColors = new Float32Array(PARTICLE_COUNT * 3);
+
+      const baseColor = new THREE.Color(0x38bdf8);
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const radius = 3.0 + Math.random() * 8.0;
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos((Math.random() * 2) - 1);
+
+        particlePositions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+        particlePositions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+        particlePositions[i * 3 + 2] = radius * Math.cos(phi);
+
+        const c = baseColor.clone().offsetHSL((Math.random() - 0.5) * 0.3, 0, (Math.random() - 0.5) * 0.2);
+        particleColors[i * 3] = c.r;
+        particleColors[i * 3 + 1] = c.g;
+        particleColors[i * 3 + 2] = c.b;
+      }
+
+      particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+      particleGeometry.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+
+      const material = new THREE.PointsMaterial({
+        size: 0.05,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.55,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+
+      particleSystem = new THREE.Points(particleGeometry, material);
+      scene.add(particleSystem);
+    }
+
+    // Leuchtspur, die exakt der Mausbewegung folgt – jeder Punkt trägt die
+    // Tonhöhen-Farbe der zuletzt gespielten Note.
+    let trailGeometry, trailMaterial, trailMesh;
+    let trailPositions, trailColorsArr, trailSizes;
+
+    function createTrailSystem() {
+      trailGeometry = new THREE.BufferGeometry();
+      trailPositions = new Float32Array(MAX_TRAIL_POINTS * 3);
+      trailColorsArr = new Float32Array(MAX_TRAIL_POINTS * 3);
+      trailSizes = new Float32Array(MAX_TRAIL_POINTS);
+
+      trailGeometry.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+      trailGeometry.setAttribute('color', new THREE.BufferAttribute(trailColorsArr, 3));
+      trailGeometry.setAttribute('size', new THREE.BufferAttribute(trailSizes, 1));
+
+      trailMaterial = new THREE.PointsMaterial({
+        size: 0.14,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.9,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+
+      trailMesh = new THREE.Points(trailGeometry, trailMaterial);
+      scene.add(trailMesh);
+    }
+
+    function spawnTrailPoint(worldPos, hue) {
+      const color = new THREE.Color().setHSL(hue, 0.9, 0.62);
+      trailPoints.push({ pos: worldPos.clone(), color, life: 1.0, maxLife: 0.9 + Math.random() * 0.4 });
+      if (trailPoints.length > MAX_TRAIL_POINTS) trailPoints.shift();
+    }
+
+    function updateTrailSystem(delta) {
+      for (let i = trailPoints.length - 1; i >= 0; i--) {
+        trailPoints[i].life -= delta / trailPoints[i].maxLife;
+        if (trailPoints[i].life <= 0) trailPoints.splice(i, 1);
+      }
+
+      const count = Math.min(trailPoints.length, MAX_TRAIL_POINTS);
+      for (let i = 0; i < MAX_TRAIL_POINTS; i++) {
+        if (i < count) {
+          const p = trailPoints[i];
+          trailPositions[i * 3] = p.pos.x;
+          trailPositions[i * 3 + 1] = p.pos.y;
+          trailPositions[i * 3 + 2] = p.pos.z;
+          trailColorsArr[i * 3] = p.color.r;
+          trailColorsArr[i * 3 + 1] = p.color.g;
+          trailColorsArr[i * 3 + 2] = p.color.b;
+          trailSizes[i] = Math.max(0, p.life);
+        } else {
+          trailPositions[i * 3] = 0;
+          trailPositions[i * 3 + 1] = -9999;
+          trailPositions[i * 3 + 2] = 0;
+        }
+      }
+      trailGeometry.attributes.position.needsUpdate = true;
+      trailGeometry.attributes.color.needsUpdate = true;
+      trailMaterial.opacity = 0.9;
+    }
+
+    function spawnShockwave(worldPos, intensity, colorHue) {
+      const geo = new THREE.RingGeometry(0.1, 0.3, 48);
+      const mat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color().setHSL(colorHue, 0.9, 0.6),
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending
+      });
+      const ring = new THREE.Mesh(geo, mat);
+      ring.position.copy(worldPos);
+      ring.lookAt(camera.position);
+      scene.add(ring);
+      shockwaves.push({ mesh: ring, life: 1.0, maxLife: 1.1, intensity });
+    }
+
+    function updateShockwaves(delta) {
+      for (let i = shockwaves.length - 1; i >= 0; i--) {
+        const sw = shockwaves[i];
+        sw.life -= delta / sw.maxLife;
+        if (sw.life <= 0) {
+          scene.remove(sw.mesh);
+          sw.mesh.geometry.dispose();
+          sw.mesh.material.dispose();
+          shockwaves.splice(i, 1);
+          continue;
+        }
+        const scale = (1.0 - sw.life) * 6.0 * sw.intensity + 0.2;
+        sw.mesh.scale.set(scale, scale, scale);
+        sw.mesh.material.opacity = sw.life * 0.8;
+      }
+    }
+
+    // Bei jedem Klick entsteht eine zufällig andere kleine Form (Geometrie,
+    // Material-Look & Größe wechseln), farblich an die aktuelle Note/Jahreszeit gekoppelt.
+    function spawnClickShape(worldPos, hue) {
+      if (clickShapes.length >= MAX_CLICK_SHAPES) {
+        const oldest = clickShapes.shift();
+        scene.remove(oldest.mesh);
+        oldest.mesh.geometry.dispose();
+        oldest.mesh.material.dispose();
+      }
+
+      const geoFactory = CLICK_SHAPE_GEOMETRIES[Math.floor(Math.random() * CLICK_SHAPE_GEOMETRIES.length)];
+      const geometry = geoFactory();
+
+      const shapeColor = new THREE.Color().setHSL(hue, 0.85, 0.6);
+      const emissiveColor = new THREE.Color().setHSL((hue + 0.12) % 1.0, 1.0, 0.5);
+
+      const materialRoll = Math.random();
+      let material;
+      if (materialRoll < 0.4) {
+        material = new THREE.MeshPhysicalMaterial({
+          color: shapeColor, emissive: emissiveColor, emissiveIntensity: 0.8,
+          roughness: 0.15, metalness: 0.75, clearcoat: 1.0,
+          transparent: true, opacity: 0.92, side: THREE.DoubleSide
+        });
+      } else if (materialRoll < 0.75) {
+        material = new THREE.MeshStandardMaterial({
+          color: shapeColor, emissive: emissiveColor, emissiveIntensity: 1.1,
+          wireframe: true, transparent: true, opacity: 0.85, side: THREE.DoubleSide
+        });
+      } else {
+        material = new THREE.MeshPhysicalMaterial({
+          color: 0xffffff, emissive: emissiveColor, emissiveIntensity: 0.9,
+          roughness: 0.05, transmission: 0.6, ior: 1.6,
+          transparent: true, opacity: 0.95, side: THREE.DoubleSide
+        });
+      }
+
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.copy(worldPos);
+      mesh.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
+      mesh.scale.set(0.01, 0.01, 0.01);
+      scene.add(mesh);
+
+      clickShapes.push({
+        mesh,
+        hue,
+        hasImpacted: false,
+        targetScale: 0.6 + Math.random() * 0.8,
+        maxLife: 2.2 + Math.random() * 1.6,
+        life: 2.2 + Math.random() * 1.6,
+        rotationSpeed: new THREE.Vector3(
+          (Math.random() - 0.5) * 1.4,
+          (Math.random() - 0.5) * 1.4,
+          (Math.random() - 0.5) * 1.4
+        ),
+        // Kleiner Auswurf-Impuls vom Klickpunkt weg – die Schwerkraft in
+        // updateClickShapes zieht die Form danach zurück zum Orb.
+        driftVelocity: new THREE.Vector3(
+          (Math.random() - 0.5) * 0.7,
+          (Math.random() - 0.5) * 0.7 + 0.25,
+          (Math.random() - 0.5) * 0.7
+        ),
+        pulseFreq: 2.0 + Math.random() * 3.5
+      });
+    }
+
+    function updateClickShapes(delta, elapsedTime) {
+      for (let i = clickShapes.length - 1; i >= 0; i--) {
+        const s = clickShapes[i];
+        s.life -= delta;
+
+        if (s.life <= 0) {
+          scene.remove(s.mesh);
+          s.mesh.geometry.dispose();
+          s.mesh.material.dispose();
+          clickShapes.splice(i, 1);
+          continue;
+        }
+
+        s.mesh.rotation.x += s.rotationSpeed.x * delta;
+        s.mesh.rotation.y += s.rotationSpeed.y * delta;
+        s.mesh.rotation.z += s.rotationSpeed.z * delta;
+
+        // Schwerkraft zieht die Form zurück zum Orb im Zentrum
+        const distToCenter = s.mesh.position.length();
+        if (distToCenter > 0.001) {
+          const pull = 1.1 * delta;
+          s.driftVelocity.x -= (s.mesh.position.x / distToCenter) * pull;
+          s.driftVelocity.y -= (s.mesh.position.y / distToCenter) * pull;
+          s.driftVelocity.z -= (s.mesh.position.z / distToCenter) * pull;
+        }
+        s.mesh.position.addScaledVector(s.driftVelocity, delta);
+
+        // Einschlag auf dem Orb: kleiner Impact-Effekt, danach klingt die Form rasch aus
+        if (!s.hasImpacted && s.mesh.position.length() < orbImpactRadius + 0.2) {
+          s.hasImpacted = true;
+          s.life = Math.min(s.life, 0.35);
+          spawnShockwave(s.mesh.position.clone(), 0.55, s.hue);
+          flashEnergy = Math.max(flashEnergy, 0.55);
+          playImpactPling();
+        }
+
+        const lifeRatio = s.life / s.maxLife;
+        let scaleProgress = 1.0;
+        if (lifeRatio > 0.85) {
+          scaleProgress = (1.0 - lifeRatio) / 0.15;
+        } else if (lifeRatio < 0.3) {
+          scaleProgress = lifeRatio / 0.3;
+        }
+
+        const pulse = 1.0 + Math.sin(elapsedTime * s.pulseFreq) * 0.15;
+        const currentScale = s.targetScale * scaleProgress * pulse;
+        s.mesh.scale.set(currentScale, currentScale, currentScale);
+        s.mesh.material.opacity = Math.min(0.95, scaleProgress * 1.1);
+      }
+    }
+
+    function screenToWorld(clientX, clientY, distance) {
+      const normX = (clientX / window.innerWidth) * 2 - 1;
+      const normY = -(clientY / window.innerHeight) * 2 + 1;
+      const vector = new THREE.Vector3(normX, normY, 0.5);
+      vector.unproject(camera);
+      const dir = vector.sub(camera.position).normalize();
+      return camera.position.clone().add(dir.multiplyScalar(distance));
+    }
+
+    function onResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    /* --------------------------------------------------------------------------
+       INTERAKTION: MAUSBEWEGUNG STEUERT KLANG & KLANG STEUERT GRAFIK
+       -------------------------------------------------------------------------- */
+    function setupInteraction() {
+      window.addEventListener('pointermove', (e) => {
+        const normX = e.clientX / window.innerWidth;
+        const normY = e.clientY / window.innerHeight;
+
+        targetMouse.x = normX * 2 - 1;
+        targetMouse.y = -(normY * 2 - 1);
+
+        const dx = e.clientX - prevScreenPos.x;
+        const dy = e.clientY - prevScreenPos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx); // -PI..PI
+
+        // Geschwindigkeit normalisieren (Pixel pro Frame -> 0..1)
+        currentSpeedNorm = Math.min(1, dist / 45);
+
+        accumulatedDistance += dist;
+
+        if (accumulatedDistance > NOTE_TRIGGER_DISTANCE &&
+            audioCtx && (audioCtx.currentTime - lastNoteTime) > MIN_NOTE_INTERVAL) {
+          accumulatedDistance = 0;
+          lastNoteTime = audioCtx.currentTime;
+
+          // Stufenweise Melodieführung statt harter Winkel-Zuordnung: die Bewegungs-
+          // richtung gibt nur die Tendenz (rauf/runter) vor, die Schrittgröße bleibt
+          // meist klein (Sekunden/Terzen) – das klingt wie eine echte Melodielinie.
+          const movesRight = Math.cos(angle) >= 0;
+          const stepRoll = Math.random();
+          let step;
+          if (stepRoll < 0.45) step = movesRight ? 1 : -1;
+          else if (stepRoll < 0.65) step = 0;
+          else if (stepRoll < 0.88) step = movesRight ? 2 : -2;
+          else step = (movesRight ? 1 : -1) * (3 + Math.floor(currentSpeedNorm * 3)); // seltener Leap, größer bei Tempo
+
+          melodyDegree += (2 - melodyDegree) * 0.03; // sanfte Gravitation zur Tonika
+          melodyDegree += step;
+          melodyDegree = Math.max(-4, Math.min(16, melodyDegree));
+
+          const scaleDegree = Math.round(melodyDegree);
+          const octaveShift = Math.floor((1 - normY) * 2.2);
+          const freq = playMoveNote(scaleDegree, octaveShift, currentSpeedNorm, 1 - normY);
+
+          if (freq) {
+            const hue = ((freq - 100) / 900) % 1.0;
+            const worldPos = screenToWorld(e.clientX, e.clientY, 5.5);
+            spawnTrailPoint(worldPos, Math.max(0, Math.min(1, hue)));
+            addResonance(0.4 + currentSpeedNorm * 1.1);
+          }
+        }
+
+        prevScreenPos = { x: e.clientX, y: e.clientY };
+
+        const hint = document.getElementById('interaction-hint');
+        if (hint && currentSpeedNorm > 0.05) hint.style.opacity = '0';
+      });
+
+      const container = document.getElementById('canvas-container');
+      container.addEventListener('pointerdown', (e) => {
+        const normY = e.clientY / window.innerHeight;
+        const scaleDegree = Math.round(melodyDegree); // Akkord passt zum aktuellen Melodie-Zentrum
+        const octaveShift = Math.floor((1 - normY) * 2.2);
+
+        playClickChord(scaleDegree, octaveShift);
+
+        const worldPos = screenToWorld(e.clientX, e.clientY, 5.5);
+        const clickHue = Math.random();
+        spawnShockwave(worldPos, 1.2, clickHue);
+        spawnClickShape(worldPos, clickHue);
+        flashEnergy = 1.0;
+        addResonance(4);
+
+        const hint = document.getElementById('interaction-hint');
+        if (hint) hint.style.opacity = '0';
+      });
+
+      window.addEventListener('wheel', (e) => {
+        camera.position.z = Math.min(14, Math.max(5, camera.position.z + e.deltaY * 0.004));
+      }, { passive: true });
+    }
+
+    /* --------------------------------------------------------------------------
+       HAUPTSCHLEIFE: ANALYSER-DATEN LESEN & GRAFIK DAVON STEUERN
+       -------------------------------------------------------------------------- */
+    function readAudioBands() {
+      if (!analyser) return;
+      analyser.getByteFrequencyData(analyserData);
+      const n = analyserData.length;
+
+      const bassEnd = Math.floor(n * 0.08);
+      const midEnd = Math.floor(n * 0.35);
+
+      let bassSum = 0, midSum = 0, trebleSum = 0;
+      for (let i = 0; i < bassEnd; i++) bassSum += analyserData[i];
+      for (let i = bassEnd; i < midEnd; i++) midSum += analyserData[i];
+      for (let i = midEnd; i < n; i++) trebleSum += analyserData[i];
+
+      bassLevel = bassSum / (bassEnd * 255);
+      midLevel = midSum / ((midEnd - bassEnd) * 255);
+      trebleLevel = trebleSum / ((n - midEnd) * 255);
+    }
+
+    function updateHUD() {
+      const speedDisplay = document.getElementById('speed-display');
+      const speedBar = document.getElementById('speed-bar');
+      const statusPulse = document.getElementById('status-pulse');
+      const noteText = document.getElementById('note-text');
+
+      if (speedDisplay) speedDisplay.innerText = `${Math.round(smoothedSpeedNorm * 100)}%`;
+      if (speedBar) speedBar.style.width = `${Math.round(smoothedSpeedNorm * 100)}%`;
+
+      if (statusPulse) {
+        statusPulse.className = CONFIG.audioEnabled
+          ? "inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
+          : "inline-block w-1.5 h-1.5 rounded-full bg-slate-600";
+      }
+      if (noteText) {
+        noteText.innerText = CONFIG.audioEnabled
+          ? (smoothedSpeedNorm > 0.05 ? "Klang wird generiert…" : "Bereit • Bewege die Maus")
+          : "Stummgeschaltet";
+      }
+
+      document.getElementById('band-bass').style.height = `${5 + smoothedBass * 95}%`;
+      document.getElementById('band-mid').style.height = `${5 + smoothedMid * 95}%`;
+      document.getElementById('band-treble').style.height = `${5 + smoothedTreble * 95}%`;
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const now = performance.now();
+      const delta = Math.min(0.1, (now - lastFrameTime) / 1000);
+      lastFrameTime = now;
+      totalElapsedTime += delta;
+
+      mouse.x += (targetMouse.x - mouse.x) * 0.08;
+      mouse.y += (targetMouse.y - mouse.y) * 0.08;
+
+      smoothedSpeedNorm += (currentSpeedNorm - smoothedSpeedNorm) * 0.1;
+      currentSpeedNorm *= 0.9; // natürliches Abklingen zwischen Mausbewegungen
+
+      const normXForDrone = (mouse.x + 1) / 2;
+      const normYForDrone = (1 - mouse.y) / 2;
+      updateDrone(normXForDrone, normYForDrone, smoothedSpeedNorm);
+
+      updateSeasonBlend(delta);
+      updateWindNoise(totalElapsedTime);
+
+      readAudioBands();
+      smoothedBass += (bassLevel - smoothedBass) * 0.25;
+      smoothedMid += (midLevel - smoothedMid) * 0.2;
+      smoothedTreble += (trebleLevel - smoothedTreble) * 0.3;
+      flashEnergy *= 0.9;
+
+      updateTrailSystem(delta);
+      updateShockwaves(delta);
+      updateClickShapes(delta, totalElapsedTime);
+
+      /* --- Klang steuert die zentrale Geometrie (inkl. sanftem Form-Übergang) --- */
+      const morphTime = totalElapsedTime * 0.5;
+      const orbHue = (seasonBlend.hue + 0.5 + smoothedMid * 0.15) % 1.0;
+
+      // Ab ~90% Bewegungsintensität ziehen sich die Vertices sanft auseinander;
+      // ab ~99% (nur bei sehr anhaltend schneller Mausbewegung erreichbar)
+      // bricht die Form komplett auseinander und formt sich beim Verlangsamen
+      // wieder sanft zusammen, da beide Werte direkt aus smoothedSpeedNorm folgen.
+      const expandAmount = Math.min(1, Math.max(0, (smoothedSpeedNorm - 0.90) / 0.09));
+      const shatterAmount = Math.min(1, Math.max(0, (smoothedSpeedNorm - 0.99) / 0.01));
+
+      for (let idx = activeCoreMeshes.length - 1; idx >= 0; idx--) {
+        const entry = activeCoreMeshes[idx];
+        const positions = entry.mesh.geometry.attributes.position;
+        const origPositions = entry.origPositions;
+        const shatterOffsets = entry.shatterOffsets;
+
+        for (let i = 0; i < positions.count; i++) {
+          const ox = origPositions.getX(i);
+          const oy = origPositions.getY(i);
+          const oz = origPositions.getZ(i);
+
+          const wave = Math.sin(ox * 1.4 + morphTime) * Math.cos(oy * 1.4 + morphTime * 1.1) * Math.sin(oz * 1.4 + morphTime * 0.7);
+          const audioDisplacement = smoothedBass * 0.35 + smoothedTreble * 0.15 * Math.sin(morphTime * 6 + i * 0.05);
+          const displacement = 1.0 + wave * 0.08 + audioDisplacement + expandAmount * 0.55;
+
+          positions.setXYZ(
+            i,
+            ox * displacement + shatterOffsets[i * 3] * shatterAmount * 2.8,
+            oy * displacement + shatterOffsets[i * 3 + 1] * shatterAmount * 2.8,
+            oz * displacement + shatterOffsets[i * 3 + 2] * shatterAmount * 2.8
+          );
+        }
+        positions.needsUpdate = true;
+        entry.mesh.geometry.computeVertexNormals();
+
+        entry.mesh.material.emissiveIntensity = 0.35 + smoothedTreble * 1.3 + flashEnergy * 0.8 + shatterAmount * 0.6;
+        entry.mesh.material.color.setHSL(orbHue, 0.75, 0.55);
+
+        // Ein-/Ausblenden je nach Übergangsstatus (Skalierung + Opazität)
+        let growth;
+        if (entry.removing) {
+          const elapsed = totalElapsedTime - entry.removeStart;
+          growth = Math.max(0, 1 - elapsed / SHAPE_FADE_OUT);
+          if (growth <= 0) {
+            mainGroup.remove(entry.mesh);
+            mainGroup.remove(entry.wireMesh);
+            entry.mesh.geometry.dispose();
+            entry.mesh.material.dispose();
+            entry.wireMesh.material.dispose();
+            activeCoreMeshes.splice(idx, 1);
+            continue;
+          }
+        } else {
+          const age = totalElapsedTime - entry.birth;
+          growth = Math.min(1, age / SHAPE_FADE_IN);
+          growth = 1 - Math.pow(1 - growth, 3); // ease-out
+        }
+
+        // Stärkeres Pulsieren: reagiert sowohl auf Bass/Klick-Flash als auch
+        // direkt auf die Mausbewegungsgeschwindigkeit.
+        const scalePulse = growth * (1.0 + smoothedBass * 0.24 + flashEnergy * 0.3 + smoothedSpeedNorm * 0.18);
+        entry.mesh.scale.set(scalePulse, scalePulse, scalePulse);
+        entry.mesh.material.opacity = growth * (1 - shatterAmount * 0.35);
+        entry.wireMesh.scale.set(scalePulse * 1.004, scalePulse * 1.004, scalePulse * 1.004);
+        entry.wireMesh.material.opacity = growth * 0.15;
+
+        if (!entry.removing) orbImpactRadius = scalePulse * 1.55;
+      }
+
+      mainGroup.rotation.y += 0.0015 + smoothedMid * 0.01 + mouse.x * 0.002 + shatterAmount * 0.02;
+      mainGroup.rotation.x += (mouse.y * 0.15 - mainGroup.rotation.x) * 0.03;
+
+      /* --- Klang steuert Partikelschwarm & Beleuchtung --- */
+      if (particleSystem) {
+        particleSystem.material.size = 0.04 + smoothedTreble * 0.09;
+        particleSystem.material.opacity = 0.35 + smoothedTreble * 0.5;
+        particleSystem.rotation.y += 0.0008 + smoothedMid * 0.003;
+        particleSystem.rotation.x = Math.sin(totalElapsedTime * 0.15) * 0.1;
+        // Herbstwind lässt den Partikelschwarm zusätzlich seitlich treiben
+        particleSystem.rotation.z += seasonBlend.windAmount * 0.004;
+        particleSystem.material.color.setHSL(seasonBlend.hue, 0.5, 0.72);
+      }
+
+      if (window.pointLight1 && window.pointLight2) {
+        window.pointLight1.intensity = 3.0 + smoothedBass * 10.0 + flashEnergy * 8.0;
+        window.pointLight2.intensity = 3.0 + smoothedTreble * 8.0;
+        window.pointLight1.position.x = Math.sin(totalElapsedTime * 0.6) * 5.5;
+        window.pointLight1.position.z = Math.cos(totalElapsedTime * 0.6) * 5.5;
+        window.pointLight2.position.x = -Math.sin(totalElapsedTime * 0.45) * 5.5;
+        window.pointLight2.position.z = -Math.cos(totalElapsedTime * 0.45) * 5.5;
+      }
+
+      /* --- Kamera reagiert sanft auf Bass-Impulse & Klicks --- */
+      camera.fov = 55 - smoothedBass * 4 - flashEnergy * 6;
+      camera.updateProjectionMatrix();
+
+      /* --- Hintergrundfarbe folgt der Jahreszeit & Klangstimmung --- */
+      const bgHue = (seasonBlend.hue + smoothedMid * 0.12 + totalElapsedTime * 0.0015) % 1.0;
+      const bgColor = new THREE.Color().setHSL(bgHue, 0.55, 0.05 + smoothedBass * 0.03);
+      scene.fog.color.copy(bgColor);
+      renderer.setClearColor(bgColor);
+
+      updateHUD();
+      renderer.render(scene, camera);
+    }
+
+    /* --------------------------------------------------------------------------
+       UI-BINDUNGEN & START
+       -------------------------------------------------------------------------- */
+    window.onload = function () {
+      initScene();
+      setupInteraction();
+
+      const startOverlay = document.getElementById('start-overlay');
+      startOverlay.addEventListener('click', () => {
+        initAudio();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        startOverlay.style.transition = 'opacity 0.5s ease-out';
+        startOverlay.style.opacity = '0';
+        setTimeout(() => { startOverlay.style.display = 'none'; }, 550);
+      }, { once: true });
+
+      const audioBtn = document.getElementById('btn-audio');
+      const audioLabel = document.getElementById('audio-label');
+      audioBtn.addEventListener('click', () => {
+        CONFIG.audioEnabled = !CONFIG.audioEnabled;
+        audioLabel.innerText = CONFIG.audioEnabled ? 'Klang: An' : 'Klang: Aus';
+        audioBtn.classList.toggle('active-chip', CONFIG.audioEnabled);
+        if (!CONFIG.audioEnabled && audioCtx) {
+          if (droneGain) droneGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1);
+          if (windGain) windGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.1);
+        }
+      });
+    };
+  </script>
+</body>
+</html>
