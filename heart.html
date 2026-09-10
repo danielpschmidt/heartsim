@@ -167,21 +167,16 @@
           <button class="bg-cyan-600 hover:bg-cyan-500 text-white px-2 py-0.5 rounded-full font-bold text-[10px] sm:text-[11px] shrink-0">Start</button>
         </div>
 
-        <!-- Herzphasen-Anzeige -->
-        <div class="absolute top-3 left-3 right-3 sm:right-auto sm:max-w-md pointer-events-none z-10">
+        <!-- Herzphasen-Anzeige (Stack) -->
+        <div class="absolute top-3 left-3 w-56 sm:w-64 pointer-events-none z-10">
           <div class="glass-panel p-2.5 sm:p-3 rounded-xl shadow-2xl border border-slate-700/60 pointer-events-auto">
-            <div class="flex items-center justify-between text-xs mb-0.5 sm:mb-1 gap-2">
+            <div class="flex items-center justify-between text-xs mb-1.5 gap-2">
               <span class="text-slate-400 font-medium flex items-center gap-1.5 shrink-0">
-                <span class="text-[11px] sm:text-xs">Phase:</span>
+                <span class="text-[11px] sm:text-xs">Phasenverlauf:</span>
                 <span id="pausedIndicatorBadge" class="hidden px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">⏸ PAUSIERT</span>
               </span>
-              <span id="cardiacPhaseBadge" class="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-700/50 truncate text-right">
-                1. Vorhof-Systole (Füllung)
-              </span>
             </div>
-            <p id="cardiacPhaseDesc" class="text-[10px] sm:text-xs text-slate-300 leading-snug sm:leading-relaxed">
-              Vorhöfe ziehen sich zusammen und pressen das Blut durch die Segelklappen in die erschlafften Herzkammern.
-            </p>
+            <div id="phaseStack" class="flex flex-col gap-1"></div>
           </div>
         </div>
 
@@ -1889,13 +1884,34 @@
       updateConductionImpulse();
     }
 
+    let lastPhaseTitle = null;
+    const PHASE_STACK_MAX = 9;
+    const PHASE_STACK_OPACITIES = [1, 0.85, 0.72, 0.6, 0.48, 0.37, 0.27, 0.18, 0.1];
+
     function updatePhaseUI(title, desc) {
-      const badge = document.getElementById('cardiacPhaseBadge');
-      const text = document.getElementById('cardiacPhaseDesc');
-      if (badge && text) {
-        badge.innerText = title;
-        text.innerText = desc;
+      if (title === lastPhaseTitle) return;
+      lastPhaseTitle = title;
+
+      const stack = document.getElementById('phaseStack');
+      if (!stack) return;
+
+      const entry = document.createElement('div');
+      entry.className = 'phase-stack-entry transition-opacity duration-300';
+      entry.innerHTML = `
+        <div class="flex items-center justify-between gap-2 mb-0.5">
+          <span class="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-700/50 truncate">${title}</span>
+        </div>
+        <p class="text-[10px] sm:text-xs text-slate-300 leading-snug sm:leading-relaxed">${desc}</p>
+      `;
+      stack.insertBefore(entry, stack.firstChild);
+
+      const entries = stack.children;
+      for (let i = entries.length - 1; i >= PHASE_STACK_MAX; i--) {
+        stack.removeChild(entries[i]);
       }
+      Array.from(stack.children).forEach((el, i) => {
+        el.style.opacity = PHASE_STACK_OPACITIES[i] ?? PHASE_STACK_OPACITIES[PHASE_STACK_OPACITIES.length - 1];
+      });
     }
 
     /* ===================================================================
@@ -2698,7 +2714,7 @@
         }
       }
 
-      if (heartGroup && !controls.state == -1 && !STATE.isPaused && !tourTargetPos) {
+      if (heartGroup && controls.state === -1 && !STATE.isPaused && !tourTargetPos) {
         heartGroup.rotation.y += 0.0014;
       }
 
