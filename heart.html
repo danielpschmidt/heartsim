@@ -2,8 +2,8 @@
 <html lang="de" class="h-full bg-slate-950 text-slate-100">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>KardioSim 3D – Realistische Herzphysiologie & Pathologie</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>KardioSim 3D – Vergleichende Herzphysiologie & Anatomie</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Three.js CDN -->
@@ -26,15 +26,16 @@
     }
   </script>
   <style>
-    /* Custom Scrollbars */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    /* Individuelle Scrollbalken */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: #0f172a; }
     ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-    /* Canvas background glow */
+    /* Canvas-Hintergrund & Touch-Gesten */
     .glow-canvas {
-      box-shadow: inset 0 0 100px rgba(10, 15, 30, 0.98);
+      box-shadow: inset 0 0 120px rgba(8, 12, 26, 0.98);
+      touch-action: none;
     }
     .ecg-grid {
       background-size: 20px 20px;
@@ -43,12 +44,11 @@
         linear-gradient(to bottom, rgba(16, 185, 129, 0.07) 1px, transparent 1px);
     }
     .glass-panel {
-      background: rgba(15, 23, 42, 0.84);
+      background: rgba(15, 23, 42, 0.88);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       border: 1px solid rgba(255, 255, 255, 0.09);
     }
-    /* 3D Label Markers */
     .annotation-label {
       transform: translate(-50%, -100%);
       pointer-events: auto;
@@ -57,307 +57,145 @@
     .annotation-label:hover {
       transform: translate(-50%, -108%) scale(1.08);
     }
-    /* Flash animation for defibrillator */
     @keyframes shock-flash {
-      0% { background-color: rgba(255, 255, 255, 0.9); }
+      0% { background-color: rgba(255, 255, 255, 0.95); }
       100% { background-color: rgba(0, 0, 0, 0); }
     }
     .defib-flash {
       animation: shock-flash 0.6s ease-out forwards;
     }
+    .drawer-slide-up {
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
   </style>
 </head>
-<body class="h-full flex flex-col overflow-hidden font-sans select-none relative">
+<body class="h-full flex flex-col overflow-hidden font-sans select-none relative bg-slate-950">
 
-  <!-- Fullscreen Flash for Defibrillation -->
+  <!-- Blitz-Effekt bei Defibrillation -->
   <div id="defibFlashOverlay" class="pointer-events-none fixed inset-0 z-50 transition duration-300"></div>
 
-  <!-- ================= TOP NAVIGATION BAR ================= -->
-  <header class="h-14 border-b border-slate-800 glass-panel flex items-center justify-between px-4 z-20 flex-shrink-0">
-    <div class="flex items-center space-x-3">
-      <div class="w-8 h-8 rounded-lg bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-500 shadow-lg shadow-red-900/40">
+  <!-- ================= KOPFZEILE / STATUSLEISTE ================= -->
+  <header class="h-14 border-b border-slate-800 glass-panel flex items-center justify-between px-3 md:px-4 z-30 flex-shrink-0">
+    <div class="flex items-center space-x-2.5">
+      <div class="w-8 h-8 rounded-lg bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-500 shadow-md shadow-red-900/40 shrink-0">
         <svg class="w-5 h-5 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
           <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
         </svg>
       </div>
       <div>
-        <h1 class="font-bold text-slate-100 text-sm md:text-base leading-tight flex items-center gap-2">
-          KardioSim 3D <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800/60">Anatomisch & Klinisch</span>
+        <h1 class="font-bold text-slate-100 text-xs sm:text-sm md:text-base leading-tight flex items-center gap-1.5 sm:gap-2">
+          KardioSim 3D <span id="speciesHeaderBadge" class="text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800/60 hidden xs:inline">👤 Mensch</span>
         </h1>
-        <p class="text-[11px] text-slate-400 hidden sm:block">Reizleitung, 4-Kammer-Schnitt, Hämodynamik & klinische Notfall-Therapie</p>
+        <p class="text-[10px] text-slate-400 hidden sm:block">Anatomische Formgebung, 3D-Reizleitung & Hämodynamik</p>
       </div>
     </div>
 
-    <!-- Quick Status & Controls -->
-    <div class="flex items-center space-x-2 md:space-x-3">
-      <div class="hidden md:flex items-center gap-4 text-xs font-mono bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800">
-        <div class="flex items-center gap-1.5">
+    <!-- Vitalparameter -->
+    <div class="flex items-center space-x-1.5 sm:space-x-3">
+      <div class="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs font-mono bg-slate-900/90 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-800">
+        <div class="flex items-center gap-1">
           <span id="pulseIndicator" class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-          <span class="text-slate-400">Puls:</span>
-          <span id="headerBpm" class="text-emerald-400 font-bold text-sm">70</span> <span class="text-[10px] text-slate-500">BPM</span>
+          <span class="text-slate-400 hidden xs:inline">Puls:</span>
+          <span id="headerBpm" class="text-emerald-400 font-bold">70</span> <span class="text-[9px] sm:text-[10px] text-slate-500">BPM</span>
         </div>
         <div class="h-3 w-px bg-slate-700"></div>
-        <div class="flex items-center gap-1.5">
-          <span class="text-slate-400">RR:</span>
-          <span id="headerBp" class="text-cyan-300 font-bold text-sm">120/80</span> <span class="text-[10px] text-slate-500">mmHg</span>
+        <div class="flex items-center gap-1">
+          <span class="text-slate-400 hidden xs:inline">RR:</span>
+          <span id="headerBp" class="text-cyan-300 font-bold text-[10px] sm:text-xs">120/80</span>
         </div>
-        <div class="h-3 w-px bg-slate-700"></div>
-        <div class="flex items-center gap-1.5">
+        <div class="h-3 w-px bg-slate-700 hidden md:block"></div>
+        <div class="hidden md:flex items-center gap-1">
           <span class="text-slate-400">HMV:</span>
-          <span id="headerCo" class="text-yellow-400 font-bold text-sm">4.9</span> <span class="text-[10px] text-slate-500">l/min</span>
+          <span id="headerCo" class="text-yellow-400 font-bold">4.9</span> <span id="headerCoUnit" class="text-[10px] text-slate-500">l/min</span>
         </div>
       </div>
 
-      <!-- PAUSE / PLAY BUTTON -->
-      <button id="pauseToggleBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-950/70 hover:bg-amber-900/80 text-amber-300 border border-amber-600/60 shadow-lg shadow-amber-950/40 transition">
-        <svg id="pauseIcon" class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <!-- Pause-Schaltfläche -->
+      <button id="pauseToggleBtn" class="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-medium bg-amber-950/70 hover:bg-amber-900/80 text-amber-300 border border-amber-600/60 shadow transition active:scale-95">
+        <svg id="pauseIcon" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
-        <svg id="playIcon" class="w-4 h-4 text-emerald-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg id="playIcon" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
-        <span id="pauseBtnText">Pause (Leertaste)</span>
+        <span id="pauseBtnText" class="hidden sm:inline">Pause</span>
       </button>
 
-      <!-- Audio Mute Toggle -->
-      <button id="audioToggleBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+      <!-- Audio-Schaltfläche -->
+      <button id="audioToggleBtn" class="flex items-center gap-1 p-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition active:scale-95" title="Ton Ein/Aus">
         <svg id="audioIconOn" class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
         </svg>
         <svg id="audioIconOff" class="w-4 h-4 text-slate-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>
         </svg>
-        <span id="audioStatusText" class="hidden sm:inline">Herztöne: An</span>
+        <span id="audioStatusText" class="hidden md:inline">Ton: An</span>
       </button>
 
-      <!-- Info Modal Button -->
-      <button id="guideBtn" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Erklärung & Anatomie">
-        <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <!-- Info-Modal-Schaltfläche -->
+      <button id="guideBtn" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition active:scale-95" title="Vergleichende Anatomie & Info">
+        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
       </button>
     </div>
   </header>
 
-  <!-- ================= MAIN WORKSPACE ================= -->
+  <!-- ================= HAUPT-ARBEITSBEREICH ================= -->
   <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
 
-    <!-- LEFT CONTROLS SIDEBAR -->
-    <aside class="w-full lg:w-80 glass-panel border-r border-slate-800/80 flex flex-col z-10 max-h-60 lg:max-h-full overflow-y-auto shrink-0 order-2 lg:order-1">
-      <div class="p-4 space-y-4">
-        
-        <!-- SECTION 1: KÖRPERLICHER ZUSTAND -->
-        <div>
-          <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
-            <span>1. Aktivitätszustand</span>
-            <span class="text-[10px] text-cyan-400 font-normal">Sauerstoffbedarf</span>
-          </label>
-          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-1.5">
-            <button data-state="sleep" class="state-btn text-left p-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800/80 transition flex items-center gap-2">
-              <span class="text-base">🌙</span>
-              <div>
-                <div class="text-xs font-semibold text-slate-200">Schlafend</div>
-                <div class="text-[10px] text-slate-400">~52 BPM | 95/60</div>
-              </div>
-            </button>
-            <button data-state="rest" class="state-btn active text-left p-2 rounded-lg border border-cyan-500 bg-cyan-950/40 text-cyan-300 transition flex items-center gap-2">
-              <span class="text-base">🪑</span>
-              <div>
-                <div class="text-xs font-semibold">Ruhend</div>
-                <div class="text-[10px] text-slate-300">~70 BPM | 120/80</div>
-              </div>
-            </button>
-            <button data-state="walk" class="state-btn text-left p-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800/80 transition flex items-center gap-2">
-              <span class="text-base">🚶</span>
-              <div>
-                <div class="text-xs font-semibold text-slate-200">Gehend</div>
-                <div class="text-[10px] text-slate-400">~95 BPM | 135/85</div>
-              </div>
-            </button>
-            <button data-state="run" class="state-btn text-left p-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800/80 transition flex items-center gap-2">
-              <span class="text-base">🏃</span>
-              <div>
-                <div class="text-xs font-semibold text-slate-200">Rennend</div>
-                <div class="text-[10px] text-slate-400">~160 BPM | 165/90</div>
-              </div>
-            </button>
-            <button data-state="stress" class="state-btn text-left p-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800/80 transition flex items-center gap-2 col-span-2 sm:col-span-1 lg:col-span-2">
-              <span class="text-base">⚡</span>
-              <div>
-                <div class="text-xs font-semibold text-slate-200">Gestresst / Adrenalin</div>
-                <div class="text-[10px] text-slate-400">~125 BPM | 155/95</div>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        <!-- SECTION 2: HERZRHYTHMUS & PATHOLOGIE -->
-        <div>
-          <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
-            <span>2. Rhythmus & Störungen</span>
-            <span class="text-[10px] text-amber-400 font-normal">Reizleitung</span>
-          </label>
-          <div class="space-y-1.5">
-            <button data-rhythm="sinus" class="rhythm-btn active w-full text-left px-3 py-2 rounded-lg border border-emerald-500 bg-emerald-950/40 text-emerald-300 transition flex items-center justify-between">
-              <div>
-                <div class="text-xs font-bold">Normaler Sinusrhythmus</div>
-                <div class="text-[10px] text-emerald-400/80">Reguläre koordinierte Pumpaktion</div>
-              </div>
-              <span class="text-xs">✅</span>
-            </button>
-            <button data-rhythm="brady" class="rhythm-btn w-full text-left px-3 py-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-slate-300 transition flex items-center justify-between">
-              <div>
-                <div class="text-xs font-bold">Sinusbradykardie</div>
-                <div class="text-[10px] text-slate-400">Verlangsamter Herzschlag (&lt; 55 BPM)</div>
-              </div>
-              <span class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">Langsam</span>
-            </button>
-            <button data-rhythm="tachy" class="rhythm-btn w-full text-left px-3 py-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-slate-300 transition flex items-center justify-between">
-              <div>
-                <div class="text-xs font-bold">Sinustachykardie</div>
-                <div class="text-[10px] text-slate-400">Beschleunigter Herzschlag (&gt; 100 BPM)</div>
-              </div>
-              <span class="text-[10px] bg-amber-950/80 text-amber-300 border border-amber-800/40 px-1.5 py-0.5 rounded">Schnell</span>
-            </button>
-            <button data-rhythm="afib" class="rhythm-btn w-full text-left px-3 py-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-slate-300 transition flex items-center justify-between">
-              <div>
-                <div class="text-xs font-bold">Vorhofflimmern (AFib)</div>
-                <div class="text-[10px] text-slate-400">Chaotische Vorhöfe, unregelmäßiger Puls</div>
-              </div>
-              <span class="text-[10px] bg-purple-950/80 text-purple-300 border border-purple-800/40 px-1.5 py-0.5 rounded">Arrhythmie</span>
-            </button>
-            <button data-rhythm="pvc" class="rhythm-btn w-full text-left px-3 py-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-slate-300 transition flex items-center justify-between">
-              <div>
-                <div class="text-xs font-bold">Ventrikuläre Extrasystole (PVC)</div>
-                <div class="text-[10px] text-slate-400">Vorzeitiger Kammersprung mit Pause</div>
-              </div>
-              <span class="text-[10px] bg-amber-950/80 text-amber-300 border border-amber-800/40 px-1.5 py-0.5 rounded">Stolpern</span>
-            </button>
-            <button data-rhythm="vfib" class="rhythm-btn w-full text-left px-3 py-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-slate-300 transition flex items-center justify-between">
-              <div>
-                <div class="text-xs font-bold text-rose-300">Kammerflimmern (VFib)</div>
-                <div class="text-[10px] text-rose-400/80">Akuter Kreislaufstillstand – Notfall!</div>
-              </div>
-              <span class="text-[10px] bg-red-900/80 text-red-200 border border-red-700 px-1.5 py-0.5 rounded animate-pulse">🚨 Akut</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- SECTION 3: KLINISCHER NOTFALLKOFFER & INTERVENTIONEN -->
-        <div>
-          <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
-            <span>3. Klinische Intervention</span>
-            <span class="text-[10px] text-rose-400 font-normal">Therapie</span>
-          </label>
-          <div class="grid grid-cols-2 gap-1.5">
-            <button id="defibBtn" class="p-2 rounded-lg border border-rose-600 bg-rose-950/60 hover:bg-rose-900 text-rose-200 font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-rose-950/50 transition">
-              <span class="text-sm">⚡</span>
-              <span>Defibrillator (Schock)</span>
-            </button>
-            <button id="medAdrenalineBtn" class="p-2 rounded-lg border border-amber-600/70 bg-amber-950/50 hover:bg-amber-900/70 text-amber-200 text-xs flex items-center justify-center gap-1 transition">
-              <span>💉</span>
-              <span>Adrenalin</span>
-            </button>
-            <button id="medBetablockerBtn" class="p-2 rounded-lg border border-blue-600/70 bg-blue-950/50 hover:bg-blue-900/70 text-blue-200 text-xs flex items-center justify-center gap-1 transition">
-              <span>💊</span>
-              <span>Betablocker</span>
-            </button>
-            <button id="medAtropineBtn" class="p-2 rounded-lg border border-emerald-600/70 bg-emerald-950/50 hover:bg-emerald-900/70 text-emerald-200 text-xs flex items-center justify-center gap-1 transition">
-              <span>🧪</span>
-              <span>Atropin</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- SECTION 4: 3D-VISUALISIERUNGS-OPTIONEN -->
-        <div>
-          <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
-            <span>4. 3D-Ansichtsmodi</span>
-          </label>
-          <div class="space-y-1.5 text-xs">
-            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/80 border border-slate-800">
-              <span class="text-slate-300">Reizleitungssystem (3D)</span>
-              <button id="toggleConductionBtn" class="px-2.5 py-1 rounded bg-yellow-950/80 border border-yellow-700 text-yellow-300 text-[11px] font-medium transition">
-                Sichtbar (Ein)
-              </button>
-            </div>
-            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/80 border border-slate-800">
-              <span class="text-slate-300">4-Kammer-Schnitt (Innen)</span>
-              <button id="toggleCutawayBtn" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-[11px] font-medium transition">
-                Aus (Außenansicht)
-              </button>
-            </div>
-            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/80 border border-slate-800">
-              <span class="text-slate-300">Koronargefäße (Herzkranz)</span>
-              <button id="toggleCoronariesBtn" class="px-2.5 py-1 rounded bg-red-950/80 border border-red-700 text-red-300 text-[11px] font-medium transition">
-                Sichtbar (Ein)
-              </button>
-            </div>
-            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/80 border border-slate-800">
-              <span class="text-slate-300">Blutfluss-Partikel</span>
-              <button id="toggleParticlesBtn" class="px-2.5 py-1 rounded bg-emerald-950/70 border border-emerald-700 text-emerald-300 text-[11px] font-medium transition">
-                Sichtbar (Ein)
-              </button>
-            </div>
-            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/80 border border-slate-800">
-              <span class="text-slate-300">Anatomie-Markierungen</span>
-              <button id="toggleLabelsBtn" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-medium transition">
-                Labels: Ein
-              </button>
-            </div>
-          </div>
-        </div>
-
-      </div>
+    <!-- DESKTOP SEITENLEISTE (LINKS) -->
+    <aside id="controlsSidebar" class="hidden lg:flex w-80 glass-panel border-r border-slate-800/80 flex-col z-10 overflow-y-auto shrink-0 order-1">
+      <div class="p-4 space-y-4" id="sidebarContent"></div>
     </aside>
 
-    <!-- CENTER 3D STAGE -->
-    <main class="flex-1 relative flex flex-col overflow-hidden order-1 lg:order-2">
+    <!-- 3D-BÜHNE (ZENTRAL) -->
+    <main class="flex-1 relative flex flex-col overflow-hidden order-1 lg:order-2 h-full">
       
       <!-- 3D WebGL Canvas Container -->
-      <div id="canvasContainer" class="w-full h-full relative cursor-grab active:cursor-grabbing glow-canvas">
+      <div id="canvasContainer" class="w-full h-full relative cursor-grab active:cursor-grabbing glow-canvas flex-1">
         <canvas id="threeCanvas" class="w-full h-full block"></canvas>
         
-        <!-- 2D Overlay for 3D Annotation Labels -->
+        <!-- 2D Overlay für Beschriftungen -->
         <div id="annotationsLayer" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
 
-        <!-- Interactive Audio Start / Hint Banner -->
-        <div id="audioBanner" class="absolute top-16 left-1/2 -translate-x-1/2 glass-panel px-4 py-2 rounded-full shadow-2xl border border-cyan-500/50 flex items-center gap-3 text-xs z-30 cursor-pointer hover:bg-slate-800/90 transition duration-300 animate-bounce">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
-          <span class="text-slate-200">🎧 <strong>Klicke in den Bildschirm</strong>, um die Herztöne (Lub-Dub) zu starten</span>
-          <button class="bg-cyan-600 hover:bg-cyan-500 text-white px-2.5 py-0.5 rounded-full font-bold text-[11px]">Start</button>
+        <!-- Audio Start Banner -->
+        <div id="audioBanner" class="absolute top-14 left-1/2 -translate-x-1/2 glass-panel px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full shadow-2xl border border-cyan-500/50 flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs z-30 cursor-pointer hover:bg-slate-800/90 transition duration-300 animate-bounce max-w-[92%] sm:max-w-none">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0"></span>
+          <span class="text-slate-200 truncate">🎧 <strong>Klicke</strong>, um den Herzschlag-Sound zu aktivieren</span>
+          <button class="bg-cyan-600 hover:bg-cyan-500 text-white px-2 py-0.5 rounded-full font-bold text-[10px] sm:text-[11px] shrink-0">Start</button>
         </div>
 
-        <!-- Interactive Phase Pill Overlay -->
-        <div class="absolute top-4 left-4 right-4 md:right-auto md:max-w-md pointer-events-none z-10">
-          <div class="glass-panel p-3 rounded-xl shadow-2xl border border-slate-700/60 pointer-events-auto">
-            <div class="flex items-center justify-between text-xs mb-1">
-              <span class="text-slate-400 font-medium flex items-center gap-1.5">
-                <span>Aktuelle Herzphase:</span>
-                <span id="pausedIndicatorBadge" class="hidden px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">⏸ PAUSIERT</span>
+        <!-- Herzphasen-Anzeige -->
+        <div class="absolute top-3 left-3 right-3 sm:right-auto sm:max-w-md pointer-events-none z-10">
+          <div class="glass-panel p-2.5 sm:p-3 rounded-xl shadow-2xl border border-slate-700/60 pointer-events-auto">
+            <div class="flex items-center justify-between text-xs mb-0.5 sm:mb-1 gap-2">
+              <span class="text-slate-400 font-medium flex items-center gap-1.5 shrink-0">
+                <span class="text-[11px] sm:text-xs">Phase:</span>
+                <span id="pausedIndicatorBadge" class="hidden px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">⏸ PAUSIERT</span>
               </span>
-              <span id="cardiacPhaseBadge" class="px-2 py-0.5 rounded text-[11px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-700/50">
+              <span id="cardiacPhaseBadge" class="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-700/50 truncate text-right">
                 1. Vorhof-Systole (Füllung)
               </span>
             </div>
-            <p id="cardiacPhaseDesc" class="text-xs text-slate-300 leading-relaxed">
-              Vorhöfe ziehen sich zusammen (Vorhofsystole) und pressen das Blut durch die geöffneten Segelklappen in die erschlafften Herzkammern (Ventrikel).
+            <p id="cardiacPhaseDesc" class="text-[10px] sm:text-xs text-slate-300 leading-snug sm:leading-relaxed">
+              Vorhöfe ziehen sich zusammen und pressen das Blut durch die Segelklappen in die erschlafften Herzkammern.
             </p>
           </div>
         </div>
 
-        <!-- Guided Tour Navigation Bar (Bottom Center of 3D view) -->
-        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 glass-panel px-3 py-1.5 rounded-xl border border-cyan-500/40 shadow-2xl flex items-center gap-2 z-10 text-xs">
-          <span class="text-cyan-400 font-bold hidden sm:inline">Lern-Tour:</span>
-          <button id="tourPrevBtn" class="p-1 px-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">◀</button>
-          <span id="tourStepText" class="font-medium text-slate-200 text-center min-w-[130px] sm:min-w-[160px]">1/5: Gesamtansicht</span>
-          <button id="tourNextBtn" class="p-1 px-2 rounded bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition">▶</button>
+        <!-- Tour-Leiste -->
+        <div class="absolute bottom-16 lg:bottom-4 left-1/2 -translate-x-1/2 glass-panel px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border border-cyan-500/40 shadow-2xl flex items-center gap-1.5 sm:gap-2 z-10 text-[11px] sm:text-xs">
+          <span class="text-cyan-400 font-bold hidden xs:inline">Tour:</span>
+          <button id="tourPrevBtn" class="p-1 px-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition active:scale-95">◀</button>
+          <span id="tourStepText" class="font-medium text-slate-200 text-center min-w-[110px] sm:min-w-[150px] text-[10px] sm:text-xs truncate">1/5: Gesamtansicht</span>
+          <button id="tourNextBtn" class="p-1 px-2 rounded bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition active:scale-95">▶</button>
         </div>
 
-        <!-- 3D Navigation Helpers (Bottom right of 3D view) -->
-        <div class="absolute bottom-4 right-4 flex flex-col gap-1.5 z-10">
-          <button id="floatingPauseBtn" class="p-2 rounded-lg glass-panel hover:bg-slate-800/80 text-amber-300 border border-amber-600/50 shadow-lg text-xs flex items-center gap-1.5 transition" title="Animation pausieren / fortsetzen (Leertaste)">
+        <!-- Schwebende Navigationshilfen (Rechts) -->
+        <div class="absolute bottom-16 lg:bottom-4 right-3 flex flex-col gap-1.5 z-10">
+          <button id="floatingPauseBtn" class="p-2 rounded-lg glass-panel hover:bg-slate-800/80 text-amber-300 border border-amber-600/50 shadow-lg text-xs flex items-center gap-1 transition active:scale-95" title="Animation pausieren / fortsetzen">
             <svg id="floatingPauseIcon" class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
@@ -367,7 +205,7 @@
             </svg>
             <span id="floatingPauseText" class="hidden sm:inline">Pause</span>
           </button>
-          <button id="resetCameraBtn" class="p-2 rounded-lg glass-panel hover:bg-slate-800/80 text-slate-300 border border-slate-700 shadow-lg text-xs flex items-center gap-1.5 transition" title="Kamera zurücksetzen">
+          <button id="resetCameraBtn" class="p-2 rounded-lg glass-panel hover:bg-slate-800/80 text-slate-300 border border-slate-700 shadow-lg text-xs flex items-center gap-1 transition active:scale-95" title="Kamera zurücksetzen">
             <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
             </svg>
@@ -375,178 +213,188 @@
           </button>
         </div>
 
-        <!-- Color Legend (Bottom left of 3D view) -->
-        <div class="absolute bottom-4 left-4 glass-panel px-3 py-2 rounded-xl text-[11px] border border-slate-700/60 hidden sm:flex items-center gap-3 z-10">
-          <div class="flex items-center gap-1.5">
-            <span class="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></span>
+        <!-- Farb-Legende -->
+        <div class="absolute bottom-16 lg:bottom-4 left-3 glass-panel px-2.5 py-1.5 rounded-xl text-[10px] border border-slate-700/60 hidden md:flex items-center gap-2.5 z-10">
+          <div class="flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.8)]"></span>
             <span class="text-slate-300">Sauerstoffarm</span>
           </div>
-          <div class="h-3 w-px bg-slate-700"></div>
-          <div class="flex items-center gap-1.5">
-            <span class="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+          <div class="h-2.5 w-px bg-slate-700"></div>
+          <div class="flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]"></span>
             <span class="text-slate-300">Sauerstoffreich</span>
           </div>
-          <div class="h-3 w-px bg-slate-700"></div>
-          <div class="flex items-center gap-1.5">
-            <span class="w-2.5 h-2.5 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.9)] animate-pulse"></span>
-            <span class="text-yellow-300 font-medium">Reizleitung (3D)</span>
+          <div class="h-2.5 w-px bg-slate-700"></div>
+          <div class="flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
+            <span class="text-yellow-300 font-medium">Reizleitung</span>
           </div>
         </div>
 
       </div>
 
-      <!-- BOTTOM DASHBOARD: LIVE EKG & BLUTDRUCK & MEDIZINISCHE ANALYSE -->
-      <div class="h-56 lg:h-64 border-t border-slate-800 glass-panel grid grid-cols-1 md:grid-cols-12 shrink-0 z-10">
-        
-        <!-- EKG Monitor (5 Cols) -->
-        <div class="md:col-span-5 border-r border-slate-800/80 p-3 flex flex-col justify-between relative ecg-grid">
+      <!-- DESKTOP MONITOR-DASHBOARD (UNTEN) -->
+      <div id="desktopDashboard" class="hidden lg:grid h-56 xl:h-60 border-t border-slate-800 glass-panel grid-cols-12 shrink-0 z-10">
+        <!-- EKG-Monitor -->
+        <div class="col-span-5 border-r border-slate-800/80 p-3 flex flex-col justify-between relative ecg-grid">
           <div class="flex items-center justify-between mb-1">
             <div class="flex items-center gap-2">
               <span class="text-xs font-mono font-bold text-emerald-400 flex items-center gap-1">
                 <span id="ecgLiveDot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 EKG ABLEITUNG II
               </span>
-              <span id="ecgSpeedText" class="text-[10px] text-slate-500 font-mono">25 mm/s | 10 mm/mV</span>
+              <span class="text-[10px] text-slate-500 font-mono" id="ecgSpeedCalibration">25 mm/s | 10 mm/mV</span>
             </div>
             <div class="text-[11px] font-mono text-emerald-400/90 font-semibold" id="rhythmTitleBadge">
               Sinusrhythmus
             </div>
           </div>
-
           <div class="flex-1 relative w-full h-full min-h-[90px]">
-            <canvas id="ecgCanvas" class="w-full h-full block"></canvas>
+            <canvas id="ecgCanvasDesktop" class="w-full h-full block"></canvas>
           </div>
-
-          <!-- EKG Diagnostics Footer -->
           <div class="flex justify-between items-center text-[10px] text-slate-400 pt-1 border-t border-slate-800/60 font-mono">
-            <span>P-Welle: <strong class="text-slate-200" id="pWaveStatus">Normal (0.08s)</strong></span>
+            <span>P-Welle: <strong class="text-slate-200" id="pWaveStatus">Normal</strong></span>
             <span>PQ: <strong class="text-slate-200" id="pqStatus">160ms</strong></span>
-            <span>QRS: <strong class="text-slate-200" id="qrsStatus">85ms (schmal)</strong></span>
+            <span>QRS: <strong class="text-slate-200" id="qrsStatus">85ms</strong></span>
             <span>QTc: <strong class="text-slate-200" id="qtStatus">390ms</strong></span>
           </div>
         </div>
 
-        <!-- Hämodynamik & Druckkurve (3 Cols) -->
-        <div class="md:col-span-3 border-r border-slate-800/80 p-3 flex flex-col justify-between">
+        <!-- Hämodynamik & Aortendruckkurve -->
+        <div class="col-span-3 border-r border-slate-800/80 p-3 flex flex-col justify-between">
           <div class="flex items-center justify-between mb-1">
-            <span class="text-xs font-mono font-bold text-cyan-400">DRUCKKURVE (Aorta & Ventrikel)</span>
-            <span class="text-[10px] text-slate-500 font-mono">mmHg</span>
+            <span class="text-xs font-mono font-bold text-cyan-400 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+              AORTENDRUCK-KURVE
+            </span>
+            <span class="text-[10px] text-slate-400 font-mono font-bold" id="pressureLiveValText">120/80 mmHg</span>
           </div>
           <div class="flex-1 relative w-full h-full min-h-[90px]">
-            <canvas id="pressureCanvas" class="w-full h-full block"></canvas>
+            <canvas id="pressureCanvasDesktop" class="w-full h-full block"></canvas>
           </div>
           <div class="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-slate-800/60">
             <div>
-              <span class="text-slate-500">Schlagvolumen:</span>
+              <span class="text-slate-500">Schlagvol.:</span>
               <span id="strokeVolumeText" class="font-bold text-slate-200 font-mono ml-1">70 ml</span>
             </div>
             <div>
-              <span class="text-slate-500">Auswurffraktion:</span>
+              <span class="text-slate-500">EF:</span>
               <span id="efText" class="font-bold text-cyan-400 font-mono ml-1">60%</span>
             </div>
           </div>
         </div>
 
-        <!-- Medizinischer Erklärungs-Stream (4 Cols) -->
-        <div class="md:col-span-4 p-3 flex flex-col justify-between overflow-y-auto bg-slate-900/40">
+        <!-- Ärztlicher Befund -->
+        <div class="col-span-4 p-3 flex flex-col justify-between overflow-y-auto bg-slate-900/40">
           <div class="flex items-center justify-between pb-1 border-b border-slate-800">
             <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
               <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
               </svg>
-              Klinische Befunderklärung
+              Klinischer & Allometrischer Befund
             </span>
-            <span class="text-[10px] bg-slate-800 text-cyan-300 px-2 py-0.5 rounded border border-slate-700">Ärztliche Visite</span>
+            <span class="text-[10px] bg-slate-800 text-cyan-300 px-2 py-0.5 rounded border border-slate-700" id="speciesStatusPill">Mensch</span>
           </div>
 
-          <div id="medicalNotes" class="my-2 text-xs text-slate-300 space-y-1.5 overflow-y-auto pr-1">
-            <!-- Dynamically populated medical analysis -->
-          </div>
+          <div id="medicalNotesDesktop" class="my-2 text-xs text-slate-300 space-y-1.5 overflow-y-auto pr-1"></div>
 
           <div class="pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-            <span class="text-slate-400">Tipp: <span class="text-slate-300">Leertaste = Pause, Kammern anklicken</span></span>
+            <span class="text-slate-400">Tipp: <span class="text-slate-300">Leertaste = Pause</span></span>
             <button id="detailModalBtn" class="text-cyan-400 hover:text-cyan-300 underline font-medium">
-              Physiologie im Detail
+              Vergleichende Physiologie
             </button>
           </div>
         </div>
-
       </div>
 
     </main>
 
   </div>
 
-  <!-- ================= DETAIL MODAL DIALOG ================= -->
-  <div id="detailModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-    <div class="glass-panel w-full max-w-3xl max-h-[85vh] rounded-2xl border border-slate-700 shadow-2xl flex flex-col overflow-hidden">
-      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full bg-cyan-950 border border-cyan-700 flex items-center justify-center text-cyan-400">
+  <!-- ================= MOBILE UNTERE NAVIGATION (< lg) ================= -->
+  <nav class="lg:hidden glass-panel border-t border-slate-800/90 h-14 flex items-center justify-around px-2 z-40 shrink-0">
+    <button data-tab="3d" class="mobile-tab-btn active flex flex-col items-center gap-0.5 text-cyan-400 font-bold text-[10px] transition">
+      <span class="text-base">🫀</span>
+      <span>3D-Herz</span>
+    </button>
+    <button data-tab="monitors" class="mobile-tab-btn flex flex-col items-center gap-0.5 text-slate-400 hover:text-slate-200 text-[10px] transition">
+      <span class="text-base">📈</span>
+      <span>EKG & Druck</span>
+    </button>
+    <button data-tab="controls" class="mobile-tab-btn flex flex-col items-center gap-0.5 text-slate-400 hover:text-slate-200 text-[10px] transition">
+      <span class="text-base">⚡</span>
+      <span>Steuerung</span>
+    </button>
+    <button data-tab="notes" class="mobile-tab-btn flex flex-col items-center gap-0.5 text-slate-400 hover:text-slate-200 text-[10px] transition">
+      <span class="text-base">📋</span>
+      <span>Befund</span>
+    </button>
+  </nav>
+
+  <!-- Mobiles Auszieh-Panel -->
+  <div id="mobileDrawer" class="lg:hidden fixed inset-x-0 bottom-14 bg-slate-900/95 backdrop-blur-xl border-t border-slate-700 shadow-2xl z-30 max-h-[75vh] flex flex-col drawer-slide-up translate-y-full transition-transform duration-300 ease-out hidden">
+    <div class="p-3 border-b border-slate-800 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span id="drawerIcon" class="text-lg">⚡</span>
+        <h3 id="drawerTitle" class="font-bold text-sm text-slate-100">Tierart & Steuerung</h3>
+      </div>
+      <button id="closeDrawerBtn" class="p-1.5 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800 text-xs flex items-center gap-1">
+        <span>Schließen</span> ✕
+      </button>
+    </div>
+    <div id="drawerBody" class="p-4 overflow-y-auto space-y-4 text-xs"></div>
+  </div>
+
+  <!-- ================= DETAIL-MODAL ================= -->
+  <div id="detailModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="glass-panel w-full max-w-3xl max-h-[90vh] rounded-2xl border border-slate-700 shadow-2xl flex flex-col overflow-hidden">
+      <div class="px-4 sm:px-6 py-3.5 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-cyan-950 border border-cyan-700 flex items-center justify-center text-cyan-400 text-sm">
             🩺
           </div>
           <div>
-            <h3 class="font-bold text-slate-100 text-base">Der menschliche Herz-Kreislauf: Medizinisch fundiert erklärt</h3>
-            <p class="text-xs text-slate-400">Aufbau, Klappenmechanik, Herzkranzgefäße & Torsion</p>
+            <h3 class="font-bold text-slate-100 text-xs sm:text-base">Vergleichende Kardiologie & Allometrie</h3>
+            <p class="text-[10px] sm:text-xs text-slate-400">Kleibersches Gesetz, Herzmasse & morphologische Unterschiede</p>
           </div>
         </div>
-        <button id="closeModalBtn" class="p-2 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800 transition">
+        <button id="closeModalBtn" class="p-1.5 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
         </button>
       </div>
-      <div class="p-6 overflow-y-auto space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="p-4 rounded-xl bg-slate-900/80 border border-blue-900/40">
-            <h4 class="font-bold text-blue-400 text-sm mb-2 flex items-center gap-2">
+      <div class="p-4 sm:p-6 overflow-y-auto space-y-3.5 text-xs sm:text-sm text-slate-300 leading-relaxed">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+          <div class="p-3 sm:p-4 rounded-xl bg-slate-900/80 border border-blue-900/40">
+            <h4 class="font-bold text-blue-400 text-xs sm:text-sm mb-1.5 flex items-center gap-2">
               <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-              Rechtes Herz (Niederdrucksystem)
+              Allometrische Herzskalierung
             </h4>
-            <ul class="space-y-1.5 text-slate-300 list-disc list-inside text-xs">
-              <li><strong>Vena Cava:</strong> Sammelt sauerstoffarmes, CO₂-reiches Blut aus dem Körper.</li>
-              <li><strong>Rechter Vorhof (Atrium dextrum):</strong> Mit rechtem Herzohr (*Auricula dextra*).</li>
-              <li><strong>Trikuspidalklappe:</strong> 3-segeliges Einlassventil der rechten Kammer.</li>
-              <li><strong>Rechte Kammer (Ventrikel):</strong> Pumpt das Blut mit geringem Druck (~25/10 mmHg) über den Truncus pulmonalis in die Lunge.</li>
+            <p class="text-[11px] sm:text-xs text-slate-300 mb-2">
+              Bei fast allen Säugetieren macht das Herz ca. <strong>0,6 % des Körpergewichts</strong> aus. Allerdings sinkt die Herzfrequenz mit zunehmender Körpermasse drastisch nach dem <em>Kleiberschen Gesetz</em> ($HF \propto M^{-1/4}$):
+            </p>
+            <ul class="space-y-1 text-slate-300 list-disc list-inside text-[11px] sm:text-xs">
+              <li><strong>Maus (25 g):</strong> $\sim 600\text{ BPM}$ – kugelig, riesige Vorhöfe für Schnellfüllung.</li>
+              <li><strong>Katze (4 kg):</strong> $\sim 160\text{ BPM}$ – schlanke, spindelförmige Kammern.</li>
+              <li><strong>Hund (25 kg):</strong> $\sim 100\text{ BPM}$ – eiförmig (*globoid*) mit 2 Aortenabgängen.</li>
+              <li><strong>Mensch (75 kg):</strong> $\sim 70\text{ BPM}$ – kegelförmig mit spitzem Apex & 3 Aortenabgängen.</li>
+              <li><strong>Blauwal (140.000 kg):</strong> $\sim 6\text{ BPM}$ – flach, extrem breit, 50 Liter Schlagvolumen!</li>
             </ul>
           </div>
 
-          <div class="p-4 rounded-xl bg-slate-900/80 border border-red-900/40">
-            <h4 class="font-bold text-red-400 text-sm mb-2 flex items-center gap-2">
+          <div class="p-3 sm:p-4 rounded-xl bg-slate-900/80 border border-red-900/40">
+            <h4 class="font-bold text-red-400 text-xs sm:text-sm mb-1.5 flex items-center gap-2">
               <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-              Linkes Herz (Hochdrucksystem)
+              Warum unterscheiden sich die Formen?
             </h4>
-            <ul class="space-y-1.5 text-slate-300 list-disc list-inside text-xs">
-              <li><strong>Lungenvenen (4 Ostia):</strong> Bringen arterielles O₂-reiches Blut.</li>
-              <li><strong>Linker Vorhof (Atrium sinistrum):</strong> Mit linkem Herzohr (*Auricula sinistra*).</li>
-              <li><strong>Mitralklappe (Bikuspidalklappe):</strong> Hochdruckstabiles Segelventil.</li>
-              <li><strong>Linke Kammer (Ventrikel):</strong> 3-mal dickeres Myokard; wirft Blut mit 120 mmHg durch die Aortenklappe in den Körper aus.</li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
-          <h4 class="font-bold text-yellow-300 text-sm mb-1.5">Das Reizleitungssystem (Autonomie des Herzens)</h4>
-          <p class="text-xs text-slate-300 mb-2">
-            Das Herz schlägt unabhängig vom Nervensystem durch spezialisierte Schrittmacherzellen:
-          </p>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-            <div class="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700">
-              <span class="font-bold text-yellow-300">1. Sinusknoten:</span>
-              <p class="mt-1 text-slate-400">Primärer Schrittmacher (60–80/min). Sitzt an der Mündung der oberen Hohlvene.</p>
-            </div>
-            <div class="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700">
-              <span class="font-bold text-yellow-300">2. AV-Knoten:</span>
-              <p class="mt-1 text-slate-400">Verzögert das Signal um ~0.1s, damit sich die Kammern optimal füllen können (PQ-Zeit).</p>
-            </div>
-            <div class="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700">
-              <span class="font-bold text-yellow-300">3. His & Purkinje:</span>
-              <p class="mt-1 text-slate-400">Leiten das Signal blitzschnell zur Herzspitze, damit die Kontraktion von unten nach oben erfolgt.</p>
-            </div>
+            <p class="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
+              Die Herzform passt sich evolutionär dem Thorax und dem Bewegungsapparat an: Der tiefe Brustkorb von Raubtieren (Hund) erfordert ein eher eiförmiges Herz. Der aufrechte Gang des Menschen begünstigt eine asymmetrische Kegelform mit schrägem Apex. Die Tauchphysiologie des Bartenwals erfordert extrem dicke, dehnfähige Windkesselarterien und breite Basen, um Bradykardien unter enormem hydrostatischem Druck zu überstehen.
+            </p>
           </div>
         </div>
       </div>
-      <div class="px-6 py-3 border-t border-slate-800 bg-slate-900/90 flex justify-end">
+      <div class="px-4 sm:px-6 py-3 border-t border-slate-800 bg-slate-900/90 flex justify-end">
         <button id="closeModalFooterBtn" class="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs transition">
           Verstanden & Schließen
         </button>
@@ -554,22 +402,306 @@
     </div>
   </div>
 
-  <!-- ================= POPUP POPOVER FOR CLICKED CHAMBERS ================= -->
-  <div id="anatomyPopover" class="fixed z-40 hidden glass-panel p-3.5 rounded-xl border border-cyan-500/50 shadow-2xl max-w-xs text-xs">
+  <!-- ================= POPOVER FÜR ANATOMISCHE STRUKTUREN ================= -->
+  <div id="anatomyPopover" class="fixed z-40 hidden glass-panel p-3.5 rounded-xl border border-cyan-500/50 shadow-2xl max-w-[90vw] sm:max-w-xs text-xs">
     <div class="flex items-center justify-between mb-1.5">
       <h5 id="popoverTitle" class="font-bold text-cyan-300 text-sm">Struktur</h5>
       <button id="closePopover" class="text-slate-400 hover:text-slate-200">✕</button>
     </div>
-    <p id="popoverBody" class="text-slate-300 leading-normal mb-2"></p>
-    <div id="popoverStats" class="text-[11px] font-mono text-slate-400 bg-slate-900/80 p-1.5 rounded border border-slate-800"></div>
+    <p id="popoverBody" class="text-slate-300 leading-normal mb-2 text-[11px] sm:text-xs"></p>
+    <div id="popoverStats" class="text-[10px] sm:text-[11px] font-mono text-slate-400 bg-slate-900/80 p-1.5 rounded border border-slate-800"></div>
   </div>
 
-  <!-- ================= JAVASCRIPT LOGIC ================= -->
+  <!-- VORLAGE FÜR BEDIENLEISTE (DESKTOP & MOBILE DRAWER) -->
+  <template id="controlsTemplate">
+    <div>
+      <label class="text-xs font-semibold uppercase tracking-wider text-cyan-400 mb-2 flex items-center justify-between">
+        <span>Tierart (Vergleichende Anatomie)</span>
+        <span class="text-[10px] text-slate-400 font-normal">3D-Morphologie</span>
+      </label>
+      <div class="grid grid-cols-2 gap-1.5">
+        <button data-species="human" class="species-btn active p-2 rounded-lg border border-cyan-500 bg-cyan-950/50 text-cyan-300 font-medium text-xs flex items-center gap-2 transition active:scale-95">
+          <span class="text-base">👤</span>
+          <div class="text-left">
+            <div class="font-bold text-xs">Mensch</div>
+            <div class="text-[9px] text-slate-300">Kegelförmig | 3 Äste</div>
+          </div>
+        </button>
+        <button data-species="dog" class="species-btn p-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800/80 text-slate-200 font-medium text-xs flex items-center gap-2 transition active:scale-95">
+          <span class="text-base">🐕</span>
+          <div class="text-left">
+            <div class="font-bold text-xs">Hund</div>
+            <div class="text-[9px] text-slate-400">Eiförmig | 2 Äste</div>
+          </div>
+        </button>
+        <button data-species="cat" class="species-btn p-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800/80 text-slate-200 font-medium text-xs flex items-center gap-2 transition active:scale-95">
+          <span class="text-base">🐱</span>
+          <div class="text-left">
+            <div class="font-bold text-xs">Katze</div>
+            <div class="text-[9px] text-slate-400">Spindelförmig | Spitz</div>
+          </div>
+        </button>
+        <button data-species="mouse" class="species-btn p-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800/80 text-slate-200 font-medium text-xs flex items-center gap-2 transition active:scale-95">
+          <span class="text-base">🐭</span>
+          <div class="text-left">
+            <div class="font-bold text-xs">Maus</div>
+            <div class="text-[9px] text-slate-400">Kugelig | Große Atria</div>
+          </div>
+        </button>
+        <button data-species="whale" class="species-btn p-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800/80 text-slate-200 font-medium text-xs flex items-center gap-2 col-span-2 transition active:scale-95">
+          <span class="text-base">🐋</span>
+          <div class="text-left">
+            <div class="font-bold text-xs">Blauwal (Koloss)</div>
+            <div class="text-[9px] text-slate-400">Breit & flach | Riesen-Aortenbulbus (~450 kg)</div>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
+        <span>1. Aktivitätszustand</span>
+        <span class="text-[10px] text-cyan-400 font-normal">Sauerstoffbedarf</span>
+      </label>
+      <div class="grid grid-cols-2 gap-1.5">
+        <button data-state="sleep" class="state-btn text-left p-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800/80 transition flex items-center gap-2 active:scale-95">
+          <span class="text-base">🌙</span>
+          <div>
+            <div class="text-xs font-semibold text-slate-200">Schlaf / Tauchen</div>
+            <div class="text-[10px] text-slate-400">Min. Frequenz</div>
+          </div>
+        </button>
+        <button data-state="rest" class="state-btn active text-left p-2 rounded-lg border border-cyan-500 bg-cyan-950/40 text-cyan-300 transition flex items-center gap-2 active:scale-95">
+          <span class="text-base">🪑</span>
+          <div>
+            <div class="text-xs font-semibold">Ruhend</div>
+            <div class="text-[10px] text-slate-300">Normalfrequenz</div>
+          </div>
+        </button>
+        <button data-state="walk" class="state-btn text-left p-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800/80 transition flex items-center gap-2 active:scale-95">
+          <span class="text-base">🚶</span>
+          <div>
+            <div class="text-xs font-semibold text-slate-200">Gehen / Cruising</div>
+            <div class="text-[10px] text-slate-400">Moderat</div>
+          </div>
+        </button>
+        <button data-state="run" class="state-btn text-left p-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800/80 transition flex items-center gap-2 active:scale-95">
+          <span class="text-base">🏃</span>
+          <div>
+            <div class="text-xs font-semibold text-slate-200">Rennen / Flucht</div>
+            <div class="text-[10px] text-slate-400">Max. Belastung</div>
+          </div>
+        </button>
+        <button data-state="stress" class="state-btn text-left p-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800/80 transition flex items-center gap-2 col-span-2 active:scale-95">
+          <span class="text-base">⚡</span>
+          <div>
+            <div class="text-xs font-semibold text-slate-200">Gestresst / Jagd</div>
+            <div class="text-[10px] text-slate-400">Sympathikustonus</div>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
+        <span>2. Rhythmus & Störungen</span>
+        <span class="text-[10px] text-amber-400 font-normal">Reizleitung</span>
+      </label>
+      <div class="space-y-1.5">
+        <button data-rhythm="sinus" class="rhythm-btn active w-full text-left px-3 py-2 rounded-lg border border-emerald-500 bg-emerald-950/40 text-emerald-300 transition flex items-center justify-between active:scale-95">
+          <div>
+            <div class="text-xs font-bold">Normaler Sinusrhythmus</div>
+            <div class="text-[10px] text-emerald-400/80">Reguläre Pumpaktion</div>
+          </div>
+          <span class="text-xs">✅</span>
+        </button>
+        <button data-rhythm="brady" class="rhythm-btn w-full text-left px-3 py-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-slate-300 transition flex items-center justify-between active:scale-95">
+          <div>
+            <div class="text-xs font-bold">Sinusbradykardie</div>
+            <div class="text-[10px] text-slate-400">Verlangsamt</div>
+          </div>
+          <span class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">Langsam</span>
+        </button>
+        <button data-rhythm="tachy" class="rhythm-btn w-full text-left px-3 py-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-slate-300 transition flex items-center justify-between active:scale-95">
+          <div>
+            <div class="text-xs font-bold">Sinustachykardie</div>
+            <div class="text-[10px] text-slate-400">Beschleunigt</div>
+          </div>
+          <span class="text-[10px] bg-amber-950/80 text-amber-300 border border-amber-800/40 px-1.5 py-0.5 rounded">Schnell</span>
+        </button>
+        <button data-rhythm="afib" class="rhythm-btn w-full text-left px-3 py-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-slate-300 transition flex items-center justify-between active:scale-95">
+          <div>
+            <div class="text-xs font-bold">Vorhofflimmern (AFib)</div>
+            <div class="text-[10px] text-slate-400">Arrhythmie</div>
+          </div>
+          <span class="text-[10px] bg-purple-950/80 text-purple-300 border border-purple-800/40 px-1.5 py-0.5 rounded">Arrhythmie</span>
+        </button>
+        <button data-rhythm="pvc" class="rhythm-btn w-full text-left px-3 py-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-slate-300 transition flex items-center justify-between active:scale-95">
+          <div>
+            <div class="text-xs font-bold">Ventrikuläre Extrasystole</div>
+            <div class="text-[10px] text-slate-400">Vorzeitiger Kammersprung</div>
+          </div>
+          <span class="text-[10px] bg-amber-950/80 text-amber-300 border border-amber-800/40 px-1.5 py-0.5 rounded">Stolpern</span>
+        </button>
+        <button data-rhythm="vfib" class="rhythm-btn w-full text-left px-3 py-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-slate-300 transition flex items-center justify-between active:scale-95">
+          <div>
+            <div class="text-xs font-bold text-rose-300">Kammerflimmern (VFib)</div>
+            <div class="text-[10px] text-rose-400/80">Akuter Kreislaufstillstand!</div>
+          </div>
+          <span class="text-[10px] bg-red-900/80 text-red-200 border border-red-700 px-1.5 py-0.5 rounded animate-pulse">🚨 Notfall</span>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
+        <span>3. Intervention & Therapie</span>
+        <span class="text-[10px] text-rose-400 font-normal">Akut</span>
+      </label>
+      <div class="grid grid-cols-2 gap-1.5">
+        <button class="defib-btn p-2 rounded-lg border border-rose-600 bg-rose-950/60 hover:bg-rose-900 text-rose-200 font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-rose-950/50 transition active:scale-95">
+          <span class="text-sm">⚡</span>
+          <span>Defibrillator</span>
+        </button>
+        <button class="med-adrenaline-btn p-2 rounded-lg border border-amber-600/70 bg-amber-950/50 hover:bg-amber-900/70 text-amber-200 text-xs flex items-center justify-center gap-1 transition active:scale-95">
+          <span>💉</span>
+          <span>Adrenalin</span>
+        </button>
+        <button class="med-betablocker-btn p-2 rounded-lg border border-blue-600/70 bg-blue-950/50 hover:bg-blue-900/70 text-blue-200 text-xs flex items-center justify-center gap-1 transition active:scale-95">
+          <span>💊</span>
+          <span>Betablocker</span>
+        </button>
+        <button class="med-atropine-btn p-2 rounded-lg border border-emerald-600/70 bg-emerald-950/50 hover:bg-emerald-900/70 text-emerald-200 text-xs flex items-center justify-center gap-1 transition active:scale-95">
+          <span>🧪</span>
+          <span>Atropin</span>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
+        <span>4. 3D-Ansichtsmodi</span>
+      </label>
+      <div class="space-y-1.5 text-xs">
+        <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/80 border border-slate-800">
+          <span class="text-slate-300">Reizleitungssystem (3D)</span>
+          <button class="toggle-conduction-btn px-2.5 py-1 rounded bg-yellow-950/80 border border-yellow-700 text-yellow-300 text-[11px] font-medium transition active:scale-95">
+            Sichtbar (Ein)
+          </button>
+        </div>
+        <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/80 border border-slate-800">
+          <span class="text-slate-300">4-Kammer-Schnitt (Innen)</span>
+          <button class="toggle-cutaway-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-[11px] font-medium transition active:scale-95">
+            Aus (Außen)
+          </button>
+        </div>
+        <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/80 border border-slate-800">
+          <span class="text-slate-300">Koronargefäße & Fett</span>
+          <button class="toggle-coronaries-btn px-2.5 py-1 rounded bg-red-950/80 border border-red-700 text-red-300 text-[11px] font-medium transition active:scale-95">
+            Sichtbar (Ein)
+          </button>
+        </div>
+        <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/80 border border-slate-800">
+          <span class="text-slate-300">Blutfluss-Partikel</span>
+          <button class="toggle-particles-btn px-2.5 py-1 rounded bg-emerald-950/70 border border-emerald-700 text-emerald-300 text-[11px] font-medium transition active:scale-95">
+            Sichtbar (Ein)
+          </button>
+        </div>
+        <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/80 border border-slate-800">
+          <span class="text-slate-300">Anatomie-Markierungen</span>
+          <button class="toggle-labels-btn px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-medium transition active:scale-95">
+            Labels: Ein
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ================= JAVASCRIPT-ENGINE ================= -->
   <script>
     /* ===================================================================
-       1. GLOBAL MEDICAL STATE & CONFIGURATION
+       1. SPEZIES-DATEN & ALLOMETRISCHE PHYSIOLOGIE
        =================================================================== */
+    const SPECIES_CONFIGS = {
+      human: {
+        id: 'human',
+        name: 'Mensch (Homo sapiens)',
+        icon: '👤',
+        heartMass: '300 g',
+        bodyMass: '75 kg',
+        strokeVolumeMl: 70,
+        baseBpm: 70,
+        sys: 120,
+        dia: 80,
+        audioFreq: 75,
+        audioDecay: 0.13,
+        scale3D: { x: 1.0, y: 1.0, z: 1.0 },
+        notes: 'Asymmetrisch-kegelförmiges Herz mit markantem Apex cordis. 3 supraaortale Arterienäste.'
+      },
+      dog: {
+        id: 'dog',
+        name: 'Hund (Canis lupus familiaris)',
+        icon: '🐕',
+        heartMass: '180 g',
+        bodyMass: '25 kg',
+        strokeVolumeMl: 35,
+        baseBpm: 100,
+        sys: 130,
+        dia: 75,
+        audioFreq: 95,
+        audioDecay: 0.10,
+        scale3D: { x: 1.1, y: 0.92, z: 1.1 },
+        notes: 'Ovoides, rundlicheres Herz mit dickerem rechtem Ventrikel. 2 Hauptabgänge am Aortenbogen.'
+      },
+      cat: {
+        id: 'cat',
+        name: 'Katze (Felis catus)',
+        icon: '🐱',
+        heartMass: '18 g',
+        bodyMass: '4 kg',
+        strokeVolumeMl: 4.5,
+        baseBpm: 160,
+        sys: 125,
+        dia: 80,
+        audioFreq: 135,
+        audioDecay: 0.08,
+        scale3D: { x: 0.82, y: 1.22, z: 0.82 },
+        notes: 'Schlanke, spindelförmige Kammern mit spitzem Apex. Rasche Kontraktion und Relaxation.'
+      },
+      mouse: {
+        id: 'mouse',
+        name: 'Maus (Mus musculus)',
+        icon: '🐭',
+        heartMass: '0.15 g',
+        bodyMass: '0.025 kg (25 g)',
+        strokeVolumeMl: 0.045,
+        baseBpm: 600,
+        sys: 110,
+        dia: 80,
+        audioFreq: 280,
+        audioDecay: 0.04,
+        scale3D: { x: 0.9, y: 0.88, z: 0.9 },
+        notes: 'Kugelförmiges Mikroherz mit riesigen Vorhöfen für Schnellfüllung. EKG ohne klassische ST-Strecke.'
+      },
+      whale: {
+        id: 'whale',
+        name: 'Blauwal (Balaenoptera musculus)',
+        icon: '🐋',
+        heartMass: '450.000 g (450 kg!)',
+        bodyMass: '140.000 kg (140 Tonnen)',
+        strokeVolumeMl: 50000,
+        baseBpm: 6,
+        sys: 120,
+        dia: 80,
+        audioFreq: 38,
+        audioDecay: 0.45,
+        scale3D: { x: 1.35, y: 0.82, z: 1.3 },
+        notes: 'Dorsoventral abgeflachtes Riesenherz mit monströsem Aorten-Windkesselbulbus. 50 Liter pro Schlag!'
+      }
+    };
+
     const STATE = {
+      species: 'human',
       isPaused: false,
       activity: 'rest',
       rhythm: 'sinus',
@@ -581,7 +713,6 @@
       phase: 0,
       beatDuration: 60 / 70,
       lastBeatTime: 0,
-      isTransparent: false,
       isCutaway: false,
       showCoronaries: true,
       showConduction: true,
@@ -593,24 +724,25 @@
       pvcTimer: 0,
       afibTimer: 0,
       time: 0,
-      tourStep: 0
+      tourStep: 0,
+      currentMobileTab: '3d'
     };
 
     const ACTIVITY_PRESETS = {
-      sleep:  { bpm: 52,  sys: 95,  dia: 60,  sv: 65,  name: 'Schlaf',   factor: 0.8 },
-      rest:   { bpm: 70,  sys: 120, dia: 80,  sv: 70,  name: 'Ruhe',     factor: 1.0 },
-      walk:   { bpm: 95,  sys: 135, dia: 85,  sv: 85,  name: 'Gehen',    factor: 1.3 },
-      run:    { bpm: 160, sys: 165, dia: 90,  sv: 110, name: 'Rennen',   factor: 2.2 },
-      stress: { bpm: 125, sys: 155, dia: 95,  sv: 80,  name: 'Stress',   factor: 1.7 }
+      sleep:  { factor: 0.75, name: 'Schlaf / Tauchruhe' },
+      rest:   { factor: 1.0,  name: 'Ruhe' },
+      walk:   { factor: 1.35, name: 'Gehen / Cruising' },
+      run:    { factor: 2.2,  name: 'Rennen / Flucht' },
+      stress: { factor: 1.75, name: 'Stress / Jagd' }
     };
 
     const RHYTHM_CONFIGS = {
-      sinus: { name: 'Normaler Sinusrhythmus', bpmOverride: null },
-      brady: { name: 'Sinusbradykardie', bpmOverride: 45, sysFactor: 0.9 },
-      tachy: { name: 'Sinustachykardie', bpmOverride: 135, sysFactor: 1.1 },
-      afib:  { name: 'Vorhofflimmern (AFib)', bpmOverride: 115, irregular: true },
-      pvc:   { name: 'Ventrikuläre Extrasystole', bpmOverride: null },
-      vfib:  { name: 'Kammerflimmern (VFib)', bpmOverride: 320, fatal: true }
+      sinus: { name: 'Normaler Sinusrhythmus', factor: 1.0 },
+      brady: { name: 'Sinusbradykardie', factor: 0.65 },
+      tachy: { name: 'Sinustachykardie', factor: 1.6 },
+      afib:  { name: 'Vorhofflimmern (AFib)', factor: 1.35, irregular: true },
+      pvc:   { name: 'Ventrikuläre Extrasystole', factor: 1.0 },
+      vfib:  { name: 'Kammerflimmern (VFib)', factor: 4.5, fatal: true }
     };
 
     const TOUR_STEPS = [
@@ -630,7 +762,7 @@
         title: "3/5: Herzkranzgefäße (Koronarien)",
         camPos: { x: 1.2, y: -0.2, z: 5.8 },
         target: { x: 0.3, y: -0.3, z: 0.5 },
-        desc: "Der RIVA (LAD) zieht an der Vorderwand zur Herzspitze. Seine Verengung oder sein Verschluss ist die häufigste Ursache für einen schweren Herzinfarkt."
+        desc: "Der RIVA (LAD) zieht im Sulcus interventricularis zur Herzspitze. Seine feine Dimension (~3-4 mm) macht ihn anfällig für atherosklerotische Verschlüsse (Infarkt)."
       },
       {
         title: "4/5: Aortenwurzel & Ausflusstrakt",
@@ -647,68 +779,7 @@
     ];
 
     /* ===================================================================
-       2. PROCEDURAL REALISTIC MYOCARDIUM & VESSEL TEXTURES
-       =================================================================== */
-    function generateMyocardiumTexture() {
-      const canvas = document.createElement('canvas');
-      canvas.width = 1024;
-      canvas.height = 1024;
-      const ctx = canvas.getContext('2d');
-
-      const grad = ctx.createLinearGradient(0, 0, 1024, 1024);
-      grad.addColorStop(0, '#99152b');
-      grad.addColorStop(0.5, '#7b1122');
-      grad.addColorStop(1, '#5c0c19');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, 1024, 1024);
-
-      ctx.strokeStyle = 'rgba(180, 40, 60, 0.18)';
-      ctx.lineWidth = 2.5;
-      for (let i = -500; i < 1500; i += 8) {
-        ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.bezierCurveTo(i + 150, 400, i - 100, 700, i + 200, 1024);
-        ctx.stroke();
-      }
-
-      for (let i = 0; i < 4000; i++) {
-        const x = Math.random() * 1024;
-        const y = Math.random() * 1024;
-        const r = Math.random() * 3 + 1;
-        ctx.fillStyle = Math.random() > 0.4 ? 'rgba(210, 45, 60, 0.12)' : 'rgba(40, 5, 10, 0.2)';
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.wrapT = THREE.RepeatWrapping;
-      return texture;
-    }
-
-    function generateBumpTexture() {
-      const canvas = document.createElement('canvas');
-      canvas.width = 512;
-      canvas.height = 512;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#808080';
-      ctx.fillRect(0, 0, 512, 512);
-
-      ctx.fillStyle = '#ffffff';
-      for (let i = 0; i < 1500; i++) {
-        const x = Math.random() * 512;
-        const y = Math.random() * 512;
-        const w = Math.random() * 25 + 5;
-        const h = Math.random() * 2 + 1;
-        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)';
-        ctx.fillRect(x, y, w, h);
-      }
-      return new THREE.CanvasTexture(canvas);
-    }
-
-    /* ===================================================================
-       3. WEB AUDIO API - SOUND SYNTHESIS & DEFIB SHOCK
+       2. WEB AUDIO API - SYNTHESE DER HERZTÖNE
        =================================================================== */
     let audioCtx = null;
 
@@ -755,12 +826,14 @@
       
       try {
         const now = audioCtx.currentTime;
+        const spec = SPECIES_CONFIGS[STATE.species];
+
         if (STATE.rhythm === 'vfib') {
           if (Math.random() < 0.2) {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(40 + Math.random() * 30, now);
+            osc.frequency.setValueAtTime(spec.audioFreq * 0.5, now);
             gain.gain.setValueAtTime(0.04, now);
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
             osc.connect(gain);
@@ -776,33 +849,33 @@
           const gain = audioCtx.createGain();
           const filter = audioCtx.createBiquadFilter();
           osc.type = 'sine';
-          osc.frequency.setValueAtTime(72, now);
-          osc.frequency.exponentialRampToValueAtTime(42, now + 0.13);
+          osc.frequency.setValueAtTime(spec.audioFreq, now);
+          osc.frequency.exponentialRampToValueAtTime(spec.audioFreq * 0.55, now + spec.audioDecay);
           filter.type = 'lowpass';
-          filter.frequency.setValueAtTime(140, now);
+          filter.frequency.setValueAtTime(spec.audioFreq * 2.2, now);
           gain.gain.setValueAtTime(0.32, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + spec.audioDecay + 0.02);
           osc.connect(filter);
           filter.connect(gain);
           gain.connect(audioCtx.destination);
           osc.start(now);
-          osc.stop(now + 0.15);
+          osc.stop(now + spec.audioDecay + 0.03);
         } else if (type === 'S2') {
           const osc = audioCtx.createOscillator();
           const gain = audioCtx.createGain();
           const filter = audioCtx.createBiquadFilter();
           osc.type = 'sine';
-          osc.frequency.setValueAtTime(118, now);
-          osc.frequency.exponentialRampToValueAtTime(60, now + 0.09);
+          osc.frequency.setValueAtTime(spec.audioFreq * 1.5, now);
+          osc.frequency.exponentialRampToValueAtTime(spec.audioFreq * 0.75, now + spec.audioDecay * 0.8);
           filter.type = 'lowpass';
-          filter.frequency.setValueAtTime(240, now);
+          filter.frequency.setValueAtTime(spec.audioFreq * 3.2, now);
           gain.gain.setValueAtTime(0.35, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + spec.audioDecay * 0.8 + 0.02);
           osc.connect(filter);
           filter.connect(gain);
           gain.connect(audioCtx.destination);
           osc.start(now);
-          osc.stop(now + 0.11);
+          osc.stop(now + spec.audioDecay * 0.8 + 0.03);
         }
       } catch (e) {
         console.warn('Audio play error:', e);
@@ -814,7 +887,6 @@
       if (!audioCtx) return;
       try {
         const now = audioCtx.currentTime;
-        // High voltage capacitor discharge zap
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = 'sawtooth';
@@ -830,82 +902,82 @@
     }
 
     /* ===================================================================
-       4. THREE.JS 3D SCENE & CONDUCTION SYSTEM
+       3. THREE.JS 3D-SZENE & RE-SKULPTURIERTE ANATOMIE
        =================================================================== */
     let scene, camera, renderer, controls;
     let heartGroup, ventriclesGroup, atriaGroup, coronariesGroup, conductionGroup;
-    let leftVentricle, rightVentricle, leftAtrium, rightAtrium;
+    let leftVentricle, rightVentricle, leftAtrium, rightAtrium, septumMesh;
     let leftAuricle, rightAuricle;
     let aortaMesh, pulmonaryArteryMesh, venaCavaMesh;
+    let aorticBranchesGroup;
     let mitralValve, tricuspidValve, aorticValve, pulmonaryValve;
     let saNodeMesh, avNodeMesh, hisBundleMesh, rightBranchMesh, leftBranchMesh;
     let bloodParticles = [];
     let anatomicalPins = [];
-    let myocardiumTexture, bumpTexture;
     let cutawayPlane;
 
     const anatomicalStructures = [
       {
         id: 'lv',
-        name: 'Linke Herzkammer (Ventriculus sinister)',
+        name: 'Linke Herzkammer & Apex (Ventriculus sinister)',
         pos: new THREE.Vector3(0.85, -0.7, 0.4),
-        desc: 'Der dickwandigste Hochdruckmuskel des Körpers (Wanddicke 10-12 mm). Befördert mit ca. 120 mmHg das sauerstoffreiche Blut über die Aorta in den gesamten Körperkreislauf.',
-        stats: 'Wanddicke: 10-12 mm | Druck: 120/8 mmHg | O₂-reich'
+        desc: 'Der dickwandigste Hochdruckmuskel des Körpers. Bildet die Herzspitze (Apex cordis) und befördert das sauerstoffreiche Blut über die Aorta in den Körperkreislauf.',
+        stats: 'O₂-reiches Blut | Hochdruckkreislauf'
       },
       {
         id: 'rv',
-        name: 'Rechte Herzkammer (Ventriculus dexter)',
+        name: 'Rechte Herzkammer & Infundibulum (Ventriculus dexter)',
         pos: new THREE.Vector3(-0.95, -0.6, 0.7),
-        desc: 'Umschließt halbmondförmig den linken Ventrikel und pumpt venöses Blut mit niedrigem Druck (~25 mmHg) über die Lungenarterie zur Oxygenierung in die Lunge.',
-        stats: 'Wanddicke: 3-4 mm | Druck: 25/4 mmHg | O₂-arm'
+        desc: 'Umschließt halbmondförmig den linken Ventrikel und verjüngt sich nach kranial zum Conus arteriosus / Infundibulum, das direkt in den Truncus pulmonalis mündet.',
+        stats: 'O₂-armes Blut | Niederdruckkreislauf (Lunge)'
       },
       {
         id: 'sa_node',
         name: 'Sinusknoten (Nodus sinuatrialis)',
         pos: new THREE.Vector3(-1.18, 1.45, 0.25),
-        desc: 'Der primäre Schrittmacher des Herzens. Erzeugt spontan Aktionspotenziale (60-80/min) und gibt den Grundrhythmus (Sinusrhythmus) vor.',
-        stats: 'Eigenfrequenz: 60-80 BPM | Lage: Vena cava sup. Mündung'
+        desc: 'Der primäre elektrische Schrittmacher des Herzens. Erzeugt spontan Aktionspotenziale und gibt den Grundrhythmus (Sinusrhythmus) vor.',
+        stats: 'Schrittmacherzentrum | Lage: Vena cava sup. Mündung'
       },
       {
         id: 'av_node',
         name: 'AV-Knoten (Nodus atrioventricularis)',
         pos: new THREE.Vector3(-0.1, 0.4, 0.15),
-        desc: 'Verzögert die Erregungsleitung (ca. 0.12s), damit die Vorhöfe ihr Blut vollständig in die Kammern pumpen können, bevor die Kammerkontraktion beginnt.',
-        stats: 'Verzögerungsglied | Sekundärer Schrittmacher (40-50 BPM)'
+        desc: 'Verzögert die Erregungsleitung, damit die Vorhöfe ihr Blut vollständig in die Kammern pumpen können, bevor die Kammerkontraktion beginnt.',
+        stats: 'Verzögerungsglied (PQ-Strecke)'
       },
       {
         id: 'lad',
-        name: 'RIVA / LAD (Herzkranzarterie)',
+        name: 'RIVA / LAD (Herzkranzarterie ~3.5 mm)',
         pos: new THREE.Vector3(0.05, -0.2, 1.25),
-        desc: 'Ramus interventricularis anterior: Das klinisch bedeutsamste Herzkranzgefäß. Zieht im Sulcus interventricularis anterior zur Herzspitze und ernährt Vorderwand und Kammerscheidewand.',
-        stats: 'Lokalisation: Sulcus anterior | Versorgt: Septum & LV'
+        desc: 'Ramus interventricularis anterior: Liegt im vorderen Sulcus gebettet in Epikardfett. Versorgt die Vorderwand beider Kammern und das Kammerscheide-Septum.',
+        stats: 'Kaliber: ~3.5 mm | Versorgt: Septum & LV-Vorderwand'
       },
       {
         id: 'la',
         name: 'Linker Vorhof & Herzohr (Atrium sinistrum)',
         pos: new THREE.Vector3(0.85, 1.3, -0.6),
-        desc: 'Nimmt das sauerstoffreiche Blut aus den vier Lungenvenen auf. Das linke Herzohr (Auricula sinistra) ist klinisch bedeutsam als häufigster Ursprungsort von Thromben bei Vorhofflimmern.',
-        stats: 'Druck: ~8-10 mmHg | O₂-reich'
+        desc: 'Nimmt das sauerstoffreiche Blut aus den vier Lungenvenen auf. Das linke Herzohr (Auricula sinistra) ist klinisch bedeutsam als häufigster Ursprungsort von Thromben.',
+        stats: 'O₂-reich | Zuleitung zur Mitralklappe'
       },
       {
         id: 'ra',
         name: 'Rechter Vorhof (Atrium dextrum)',
         pos: new THREE.Vector3(-1.2, 1.2, 0.2),
         desc: 'Mündungsgebiet von Vena cava superior und inferior.',
-        stats: 'Druck: ~2-6 mmHg (ZVD) | O₂-arm'
+        stats: 'O₂-arm | Zentraler Venendruck'
       },
       {
         id: 'aorta',
-        name: 'Aorta & Truncus brachiocephalicus',
+        name: 'Aorta (~25 mm) & Truncus brachiocephalicus',
         pos: new THREE.Vector3(0.1, 2.6, 0.1),
-        desc: 'Die Hauptschlagader. Im elastischen Aortenbogen (Arcus aortae) entspringen die Arterien für Kopf und Arme. Die elastische Dehnung garantiert den diastolischen Windkesseleffekt.',
+        desc: 'Die Hauptschlagader mit Bulbus aortae (Aortenwurzel). Im elastischen Aortenbogen entspringen die 3 großen Hals- und Armarterien.',
         stats: 'Durchmesser: ~2.5 cm | Druck: 120/80 mmHg'
       },
       {
         id: 'pa',
-        name: 'Truncus pulmonalis (Lungenarterienstamm)',
+        name: 'Truncus pulmonalis (~24 mm)',
         pos: new THREE.Vector3(-0.45, 1.9, 0.9),
-        desc: 'Entspringt dem Conus arteriosus des rechten Ventrikels und teilt sich in die Lungenarterien.',
+        desc: 'Kreuzt vor der aufsteigenden Aorta und teilt sich unterhalb des Aortenbogens in die rechte und linke Lungenarterie.',
         stats: 'Druck: 25/10 mmHg | O₂-arm'
       }
     ];
@@ -915,46 +987,43 @@
       const canvas = document.getElementById('threeCanvas');
 
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x060b14);
+      scene.background = new THREE.Color(0x050914);
 
-      camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 0.1, 100);
-      camera.position.set(0, 1.2, 8.0);
+      const isMobile = window.innerWidth < 768;
+      camera = new THREE.PerspectiveCamera(isMobile ? 48 : 42, container.clientWidth / container.clientHeight, 0.1, 100);
+      camera.position.set(0, isMobile ? 1.0 : 1.2, isMobile ? 8.8 : 8.0);
 
       renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
       renderer.setSize(container.clientWidth, container.clientHeight);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.15;
+      renderer.toneMappingExposure = 1.18;
       renderer.shadowMap.enabled = true;
-      renderer.localClippingEnabled = true; // Enables 4-chamber internal cutaway
+      renderer.localClippingEnabled = true;
 
-      // Clipping Plane for Cutaway Mode (Cuts front anterior wall to look inside chambers)
       cutawayPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0.1);
 
       controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
       controls.dampingFactor = 0.05;
-      controls.maxDistance = 14;
-      controls.minDistance = 3.0;
+      controls.maxDistance = 16;
+      controls.minDistance = 2.5;
       controls.target.set(0, 0.2, 0);
 
-      const ambientLight = new THREE.AmbientLight(0xfff5ea, 0.6);
+      const ambientLight = new THREE.AmbientLight(0xfff8f0, 0.7);
       scene.add(ambientLight);
 
-      const keyLight = new THREE.DirectionalLight(0xffffff, 1.3);
+      const keyLight = new THREE.DirectionalLight(0xffffff, 1.35);
       keyLight.position.set(6, 9, 8);
       scene.add(keyLight);
 
-      const fillLight = new THREE.DirectionalLight(0x38bdf8, 0.7);
+      const fillLight = new THREE.DirectionalLight(0x38bdf8, 0.75);
       fillLight.position.set(-6, -2, 5);
       scene.add(fillLight);
 
-      const rimLight = new THREE.DirectionalLight(0xff3366, 1.4);
+      const rimLight = new THREE.DirectionalLight(0xff3b66, 1.45);
       rimLight.position.set(2, 6, -8);
       scene.add(rimLight);
-
-      myocardiumTexture = generateMyocardiumTexture();
-      bumpTexture = generateBumpTexture();
 
       buildRealisticHeartModel();
       buildConductionSystem();
@@ -962,9 +1031,11 @@
       createAnnotationPins();
 
       window.addEventListener('resize', onWindowResize);
+      window.addEventListener('orientationchange', onWindowResize);
     }
 
-    function createSculptedVentricleGeo(isLeft) {
+    // Spezies-spezifische Ventrikel-Skulptur
+    function createSculptedVentricleGeo(speciesKey, isLeft) {
       const geo = new THREE.SphereGeometry(1.2, 48, 48);
       const pos = geo.attributes.position;
       const v = new THREE.Vector3();
@@ -973,27 +1044,75 @@
         v.fromBufferAttribute(pos, i);
         const ny = v.y / 1.2;
 
-        if (isLeft) {
+        if (speciesKey === 'whale') {
           if (ny < 0) {
-            const taper = 1.0 + ny * 0.55;
+            v.x *= 1.35;
+            v.z *= 0.75;
+            v.y *= 1.05;
+            if (isLeft && v.x > 0.6) v.y *= 0.96;
+          } else {
+            v.x *= 1.3;
+            v.z *= 0.8;
+          }
+          if (isLeft && v.z > 0) v.z *= 1.1;
+        } 
+        else if (speciesKey === 'mouse') {
+          if (ny < 0) {
+            const taper = 1.0 + ny * 0.3;
             v.x *= taper;
             v.z *= taper;
-            v.y *= 1.35;
-          } else {
-            v.x *= 0.95;
-            v.z *= 0.9;
+            v.y *= 1.08;
           }
-          if (v.z > 0) v.z *= 1.08;
-        } else {
+          if (isLeft && v.z > 0) v.z *= 1.05;
+        } 
+        else if (speciesKey === 'cat') {
           if (ny < 0) {
-            const taper = 1.0 + ny * 0.45;
-            v.x *= taper * 0.85;
-            v.z *= taper * 0.85;
-            v.y *= 1.25;
+            const taper = 1.0 + ny * 0.65;
+            v.x *= taper * 0.88;
+            v.z *= taper * 0.88;
+            v.y *= 1.45;
+          } else {
+            v.x *= 0.85;
+            v.z *= 0.85;
           }
-          if (v.x > 0) v.x *= 0.65;
-          if (v.z < 0) v.z *= 0.8;
+          if (isLeft && v.z > 0) v.z *= 1.08;
+        } 
+        else if (speciesKey === 'dog') {
+          if (ny < 0) {
+            const taper = 1.0 + ny * 0.42;
+            v.x *= taper * 1.05;
+            v.z *= taper * 1.05;
+            v.y *= 1.22;
+          }
+          if (!isLeft && v.z > 0) v.z *= 1.18;
+        } 
+        else {
+          if (isLeft) {
+            if (ny < 0) {
+              const taper = 1.0 + ny * 0.58;
+              v.x *= taper * 0.95;
+              v.z *= taper * 0.95;
+              v.y *= 1.38;
+            } else {
+              v.x *= 0.95;
+              v.z *= 0.9;
+            }
+            if (v.z > 0) v.z *= 1.1;
+          } else {
+            if (ny < 0) {
+              const taper = 1.0 + ny * 0.46;
+              v.x *= taper * 0.82;
+              v.z *= taper * 0.82;
+              v.y *= 1.22;
+            } else {
+              if (v.z > 0) v.z *= 1.15;
+              if (v.y > 0.5) v.y *= 1.12;
+            }
+            if (v.x > 0) v.x *= 0.62;
+            if (v.z < 0) v.z *= 0.78;
+          }
         }
+
         pos.setXYZ(i, v.x, v.y, v.z);
       }
       geo.computeVertexNormals();
@@ -1006,6 +1125,7 @@
       atriaGroup = new THREE.Group();
       coronariesGroup = new THREE.Group();
       conductionGroup = new THREE.Group();
+      aorticBranchesGroup = new THREE.Group();
 
       heartGroup.add(ventriclesGroup);
       heartGroup.add(atriaGroup);
@@ -1015,57 +1135,56 @@
 
       const muscleOpacity = 0.98;
 
+      // Eleganter, reflexiver Medical-Material-Shader
       const myocardiumMat = new THREE.MeshStandardMaterial({
-        color: 0xa81c32,
-        map: myocardiumTexture,
-        bumpMap: bumpTexture,
-        bumpScale: 0.045,
-        roughness: 0.32,
+        color: 0xb51e36,
+        roughness: 0.28,
         metalness: 0.08,
         opacity: muscleOpacity,
         side: THREE.DoubleSide
       });
 
       const rightVentricleMat = new THREE.MeshStandardMaterial({
-        color: 0x93182b,
-        map: myocardiumTexture,
-        bumpMap: bumpTexture,
-        bumpScale: 0.04,
-        roughness: 0.35,
+        color: 0x9e172e,
+        roughness: 0.32,
         metalness: 0.08,
         opacity: muscleOpacity,
         side: THREE.DoubleSide
       });
 
       const atriaMat = new THREE.MeshStandardMaterial({
-        color: 0x7c1424,
-        map: myocardiumTexture,
-        bumpMap: bumpTexture,
-        bumpScale: 0.03,
-        roughness: 0.45,
+        color: 0x881427,
+        roughness: 0.4,
         metalness: 0.05,
         opacity: muscleOpacity,
         side: THREE.DoubleSide
       });
 
+      const septumMat = new THREE.MeshStandardMaterial({
+        color: 0x8e1528,
+        roughness: 0.35,
+        metalness: 0.06,
+        side: THREE.DoubleSide
+      });
+
       const aortaMat = new THREE.MeshStandardMaterial({
         color: 0xdc2626,
-        roughness: 0.22,
-        metalness: 0.15
+        roughness: 0.2,
+        metalness: 0.16
       });
 
       const blueVesselMat = new THREE.MeshStandardMaterial({
         color: 0x1d4ed8,
-        roughness: 0.24,
-        metalness: 0.15
+        roughness: 0.22,
+        metalness: 0.16
       });
 
       const fatMat = new THREE.MeshStandardMaterial({
-        color: 0xd4af37,
-        roughness: 0.6,
-        metalness: 0.0,
+        color: 0xd8b548,
+        roughness: 0.55,
+        metalness: 0.02,
         transparent: true,
-        opacity: 0.65
+        opacity: 0.72
       });
 
       const valveMat = new THREE.MeshStandardMaterial({
@@ -1076,8 +1195,10 @@
         metalness: 0.4
       });
 
-      // 1. LEFT VENTRICLE
-      const lvGeo = createSculptedVentricleGeo(true);
+      const chordaeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+      // 1. LINKER VENTRIKEL & HERZSPITZE
+      const lvGeo = createSculptedVentricleGeo(STATE.species, true);
       leftVentricle = new THREE.Mesh(lvGeo, myocardiumMat);
       leftVentricle.position.set(0.42, -0.45, 0.05);
       leftVentricle.rotation.z = -0.22;
@@ -1085,8 +1206,8 @@
       leftVentricle.userData = { id: 'lv' };
       ventriclesGroup.add(leftVentricle);
 
-      // 2. RIGHT VENTRICLE
-      const rvGeo = createSculptedVentricleGeo(false);
+      // 2. RECHTER VENTRIKEL & CONUS ARTERIOSUS
+      const rvGeo = createSculptedVentricleGeo(STATE.species, false);
       rightVentricle = new THREE.Mesh(rvGeo, rightVentricleMat);
       rightVentricle.position.set(-0.68, -0.48, 0.42);
       rightVentricle.rotation.z = 0.16;
@@ -1094,7 +1215,33 @@
       rightVentricle.userData = { id: 'rv' };
       ventriclesGroup.add(rightVentricle);
 
-      // 3. LEFT ATRIUM & AURICULA SINISTRA
+      // 3. KAMMERSCHEIDEWAND (SEPTUM)
+      const septumGeo = new THREE.BoxGeometry(0.18, 1.8, 1.2);
+      septumGeo.scale(1.0, 1.0, 0.9);
+      septumMesh = new THREE.Mesh(septumGeo, septumMat);
+      septumMesh.position.set(-0.08, -0.5, 0.22);
+      septumMesh.rotation.z = -0.08;
+      ventriclesGroup.add(septumMesh);
+
+      // Papillarmuskeln & Sehnenfäden
+      const papGeo = new THREE.CylinderGeometry(0.08, 0.12, 0.5, 12);
+      const papMuscleLV = new THREE.Mesh(papGeo, septumMat);
+      papMuscleLV.position.set(0.5, -0.6, 0.2);
+      papMuscleLV.rotation.z = -0.3;
+      ventriclesGroup.add(papMuscleLV);
+
+      const papMuscleRV = new THREE.Mesh(papGeo, septumMat);
+      papMuscleRV.position.set(-0.55, -0.65, 0.35);
+      papMuscleRV.rotation.z = 0.25;
+      ventriclesGroup.add(papMuscleRV);
+
+      for (let i = 0; i < 4; i++) {
+        const chord1 = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.45, 6), chordaeMat);
+        chord1.position.set(0.48 + (i - 1.5) * 0.04, -0.25, 0.15 + (i % 2) * 0.04);
+        ventriclesGroup.add(chord1);
+      }
+
+      // 4. LINKER VORHOF & HERZOHR
       const laGeo = new THREE.SphereGeometry(0.88, 36, 36);
       laGeo.scale(0.92, 0.9, 0.82);
       leftAtrium = new THREE.Mesh(laGeo, atriaMat);
@@ -1102,13 +1249,13 @@
       leftAtrium.userData = { id: 'la' };
       atriaGroup.add(leftAtrium);
 
-      const laAuricleGeo = new THREE.ConeGeometry(0.35, 0.7, 16);
+      const laAuricleGeo = new THREE.ConeGeometry(0.35, 0.72, 16);
       leftAuricle = new THREE.Mesh(laAuricleGeo, atriaMat);
       leftAuricle.position.set(0.85, 0.95, 0.3);
       leftAuricle.rotation.set(0.8, -0.4, -0.6);
       atriaGroup.add(leftAuricle);
 
-      // 4. RIGHT ATRIUM & AURICULA DEXTRA
+      // 5. RECHTER VORHOF & HERZOHR
       const raGeo = new THREE.SphereGeometry(0.95, 36, 36);
       raGeo.scale(0.88, 1.05, 0.88);
       rightAtrium = new THREE.Mesh(raGeo, atriaMat);
@@ -1116,15 +1263,15 @@
       rightAtrium.userData = { id: 'ra' };
       atriaGroup.add(rightAtrium);
 
-      const raAuricleGeo = new THREE.ConeGeometry(0.38, 0.75, 16);
+      const raAuricleGeo = new THREE.ConeGeometry(0.38, 0.78, 16);
       rightAuricle = new THREE.Mesh(raAuricleGeo, atriaMat);
       rightAuricle.position.set(-0.65, 1.15, 0.65);
       rightAuricle.rotation.set(0.6, 0.3, 0.8);
       atriaGroup.add(rightAuricle);
 
-      // 5. AORTA & SUPRAAORTIC BRANCHES
+      // 6. AORTA MIT BULBUS AORTAE
       const aortaCurve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(0.2, 0.45, 0.05),
+        new THREE.Vector3(0.18, 0.45, 0.05),
         new THREE.Vector3(0.12, 1.45, 0.22),
         new THREE.Vector3(-0.08, 2.3, 0.12),
         new THREE.Vector3(0.38, 2.55, -0.32),
@@ -1136,22 +1283,16 @@
       aortaMesh.userData = { id: 'aorta' };
       heartGroup.add(aortaMesh);
 
-      const tbc = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.75, 16), aortaMat);
-      tbc.position.set(0.12, 2.65, 0.05);
-      tbc.rotation.z = -0.32;
-      heartGroup.add(tbc);
+      const bulbusGeo = new THREE.SphereGeometry(0.42, 16, 16);
+      bulbusGeo.scale(1.1, 0.7, 1.1);
+      const bulbusMesh = new THREE.Mesh(bulbusGeo, aortaMat);
+      bulbusMesh.position.set(0.18, 0.55, 0.08);
+      heartGroup.add(bulbusMesh);
 
-      const accs = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.78, 16), aortaMat);
-      accs.position.set(0.38, 2.72, -0.18);
-      accs.rotation.z = -0.12;
-      heartGroup.add(accs);
+      heartGroup.add(aorticBranchesGroup);
+      buildAorticBranches(STATE.species, aortaMat);
 
-      const ascs = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.75, 16), aortaMat);
-      ascs.position.set(0.68, 2.58, -0.42);
-      ascs.rotation.z = 0.12;
-      heartGroup.add(ascs);
-
-      // 6. PULMONARY TRUNK & BIFURCATION
+      // 7. TRUNCUS PULMONALIS (Kreuzt vor der Aorta)
       const paCurve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(-0.4, 0.35, 0.55),
         new THREE.Vector3(-0.25, 1.35, 0.65),
@@ -1170,41 +1311,38 @@
       const paRightBranch = new THREE.Mesh(new THREE.TubeGeometry(paRightCurve, 20, 0.22, 16, false), blueVesselMat);
       heartGroup.add(paRightBranch);
 
-      // 7. VENA CAVA (Superior & Inferior)
-      const svcGeo = new THREE.CylinderGeometry(0.26, 0.26, 1.6, 18);
-      const svc = new THREE.Mesh(svcGeo, blueVesselMat);
+      // 8. HOHLVENEN (VENA CAVA)
+      const svc = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 1.6, 18), blueVesselMat);
       svc.position.set(-1.22, 1.9, -0.18);
       heartGroup.add(svc);
 
-      const ivcGeo = new THREE.CylinderGeometry(0.26, 0.26, 1.3, 18);
-      const ivc = new THREE.Mesh(ivcGeo, blueVesselMat);
+      const ivc = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 1.3, 18), blueVesselMat);
       ivc.position.set(-1.18, -1.3, -0.18);
       heartGroup.add(ivc);
 
-      // 8. FOUR PULMONARY VEINS
-      const pvMat = aortaMat;
+      // 9. LUNGENVENEN
       const pvGeo1 = new THREE.CylinderGeometry(0.12, 0.12, 0.85, 14);
-      const pv1 = new THREE.Mesh(pvGeo1, pvMat);
+      const pv1 = new THREE.Mesh(pvGeo1, aortaMat);
       pv1.position.set(1.48, 1.25, -0.55);
       pv1.rotation.z = Math.PI / 2.2;
       heartGroup.add(pv1);
 
-      const pv2 = new THREE.Mesh(pvGeo1, pvMat);
+      const pv2 = new THREE.Mesh(pvGeo1, aortaMat);
       pv2.position.set(1.48, 0.8, -0.68);
       pv2.rotation.z = Math.PI / 2.2;
       heartGroup.add(pv2);
 
-      const pv3 = new THREE.Mesh(pvGeo1, pvMat);
+      const pv3 = new THREE.Mesh(pvGeo1, aortaMat);
       pv3.position.set(0.2, 1.35, -1.35);
       pv3.rotation.x = Math.PI / 2.3;
       heartGroup.add(pv3);
 
-      const pv4 = new THREE.Mesh(pvGeo1, pvMat);
+      const pv4 = new THREE.Mesh(pvGeo1, aortaMat);
       pv4.position.set(0.2, 0.85, -1.35);
       pv4.rotation.x = Math.PI / 2.3;
       heartGroup.add(pv4);
 
-      // 9. VALVES
+      // 10. HERZKLAPPEN
       const valveGeo = new THREE.TorusGeometry(0.36, 0.045, 14, 28);
       mitralValve = new THREE.Mesh(valveGeo, valveMat);
       mitralValve.position.set(0.52, 0.38, -0.15);
@@ -1226,19 +1364,65 @@
       pulmonaryValve.rotation.x = Math.PI / 2.4;
       heartGroup.add(pulmonaryValve);
 
-      // 10. CORONARIES
+      // 11. HERZKRANZGEFÄSSE
       buildCoronaryVessels(fatMat);
 
       renderer.domElement.addEventListener('click', onCanvasClick);
     }
 
+    function buildAorticBranches(speciesKey, aortaMat) {
+      while (aorticBranchesGroup.children.length > 0) {
+        aorticBranchesGroup.remove(aorticBranchesGroup.children[0]);
+      }
+
+      if (speciesKey === 'human') {
+        const tbc = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.75, 16), aortaMat);
+        tbc.position.set(0.12, 2.65, 0.05);
+        tbc.rotation.z = -0.32;
+        aorticBranchesGroup.add(tbc);
+
+        const accs = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.78, 16), aortaMat);
+        accs.position.set(0.38, 2.72, -0.18);
+        accs.rotation.z = -0.12;
+        aorticBranchesGroup.add(accs);
+
+        const ascs = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.75, 16), aortaMat);
+        ascs.position.set(0.68, 2.58, -0.42);
+        ascs.rotation.z = 0.12;
+        aorticBranchesGroup.add(ascs);
+      } 
+      else if (speciesKey === 'dog' || speciesKey === 'cat') {
+        const tbc = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.85, 16), aortaMat);
+        tbc.position.set(0.22, 2.68, -0.05);
+        tbc.rotation.z = -0.22;
+        aorticBranchesGroup.add(tbc);
+
+        const ascs = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.75, 16), aortaMat);
+        ascs.position.set(0.55, 2.6, -0.32);
+        ascs.rotation.z = 0.14;
+        aorticBranchesGroup.add(ascs);
+      } 
+      else if (speciesKey === 'whale') {
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.9, 16), aortaMat);
+        trunk.position.set(0.28, 2.75, -0.1);
+        trunk.rotation.z = -0.15;
+        aorticBranchesGroup.add(trunk);
+      } 
+      else {
+        const br = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.65, 12), aortaMat);
+        br.position.set(0.2, 2.55, -0.05);
+        br.rotation.z = -0.25;
+        aorticBranchesGroup.add(br);
+      }
+    }
+
     function buildCoronaryVessels(fatMat) {
       const artMat = new THREE.MeshStandardMaterial({
-        color: 0xff1e38,
+        color: 0xff2038,
         roughness: 0.18,
-        metalness: 0.3,
-        emissive: 0x880010,
-        emissiveIntensity: 0.25
+        metalness: 0.32,
+        emissive: 0x990012,
+        emissiveIntensity: 0.28
       });
 
       const veinMat = new THREE.MeshStandardMaterial({
@@ -1247,6 +1431,7 @@
         metalness: 0.2
       });
 
+      // RIVA / LAD
       const ladCurve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(0.08, 0.55, 0.72),
         new THREE.Vector3(0.05, 0.2, 0.98),
@@ -1255,23 +1440,25 @@
         new THREE.Vector3(0.32, -1.05, 0.62),
         new THREE.Vector3(0.42, -1.35, 0.28)
       ]);
-      const ladMesh = new THREE.Mesh(new THREE.TubeGeometry(ladCurve, 36, 0.055, 12, false), artMat);
+      const ladMesh = new THREE.Mesh(new THREE.TubeGeometry(ladCurve, 36, 0.038, 12, false), artMat);
       ladMesh.userData = { id: 'lad' };
       coronariesGroup.add(ladMesh);
 
+      // Diagonale Äste
       const diag1Curve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(0.04, -0.1, 1.04),
         new THREE.Vector3(0.38, -0.32, 0.95),
         new THREE.Vector3(0.68, -0.55, 0.68)
       ]);
-      coronariesGroup.add(new THREE.Mesh(new THREE.TubeGeometry(diag1Curve, 18, 0.032, 10, false), artMat));
+      coronariesGroup.add(new THREE.Mesh(new THREE.TubeGeometry(diag1Curve, 18, 0.024, 10, false), artMat));
 
       const diag2Curve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(0.12, -0.65, 0.92),
         new THREE.Vector3(0.45, -0.85, 0.72)
       ]);
-      coronariesGroup.add(new THREE.Mesh(new THREE.TubeGeometry(diag2Curve, 14, 0.026, 10, false), artMat));
+      coronariesGroup.add(new THREE.Mesh(new THREE.TubeGeometry(diag2Curve, 14, 0.02, 10, false), artMat));
 
+      // Große Herzvene
       const veinCurve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(0.38, -1.25, 0.35),
         new THREE.Vector3(0.18, -0.75, 0.88),
@@ -1280,8 +1467,9 @@
         new THREE.Vector3(0.55, 0.45, 0.45),
         new THREE.Vector3(0.72, 0.42, -0.3)
       ]);
-      coronariesGroup.add(new THREE.Mesh(new THREE.TubeGeometry(veinCurve, 32, 0.048, 12, false), veinMat));
+      coronariesGroup.add(new THREE.Mesh(new THREE.TubeGeometry(veinCurve, 32, 0.036, 12, false), veinMat));
 
+      // RCA
       const rcaCurve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(-0.25, 0.55, 0.65),
         new THREE.Vector3(-0.65, 0.38, 0.75),
@@ -1289,31 +1477,30 @@
         new THREE.Vector3(-1.08, -0.42, 0.48),
         new THREE.Vector3(-0.85, -0.75, 0.1)
       ]);
-      coronariesGroup.add(new THREE.Mesh(new THREE.TubeGeometry(rcaCurve, 28, 0.052, 12, false), artMat));
+      coronariesGroup.add(new THREE.Mesh(new THREE.TubeGeometry(rcaCurve, 28, 0.038, 12, false), artMat));
 
       const rcaMarginalCurve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(-1.08, -0.42, 0.48),
         new THREE.Vector3(-0.98, -0.85, 0.45),
         new THREE.Vector3(-0.75, -1.15, 0.35)
       ]);
-      coronariesGroup.add(new THREE.Mesh(new THREE.TubeGeometry(rcaMarginalCurve, 16, 0.03, 10, false), artMat));
+      coronariesGroup.add(new THREE.Mesh(new THREE.TubeGeometry(rcaMarginalCurve, 16, 0.022, 10, false), artMat));
 
-      const fatGeo = new THREE.SphereGeometry(0.18, 12, 12);
-      fatGeo.scale(1.2, 0.4, 0.8);
+      // Epikardiale Fettpolster
+      const fatGeo = new THREE.SphereGeometry(0.14, 10, 10);
+      fatGeo.scale(1.15, 0.38, 0.75);
       for (let i = 0; i < 9; i++) {
         const p = ladCurve.getPointAt(i / 8);
         const fatMesh = new THREE.Mesh(fatGeo, fatMat);
-        fatMesh.position.set(p.x - 0.03, p.y, p.z - 0.04);
+        fatMesh.position.set(p.x - 0.02, p.y, p.z - 0.03);
         fatMesh.rotation.z = 0.4;
         coronariesGroup.add(fatMesh);
       }
     }
 
     /* ===================================================================
-       5. 3D CONDUCTION SYSTEM WITH GLOWING PROPAGATING IMPULSE
+       4. 3D REIZLEITUNGSSYSTEM
        =================================================================== */
-    let conductionLines = [];
-
     function buildConductionSystem() {
       const nodeMat = new THREE.MeshStandardMaterial({
         color: 0xfacc15,
@@ -1322,33 +1509,25 @@
         roughness: 0.2
       });
 
-      const pathwayMat = new THREE.MeshBasicMaterial({
-        color: 0xfef08a,
-        wireframe: false
-      });
+      const pathwayMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
 
-      // 1. Sinus Node (SA Node)
       saNodeMesh = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 16), nodeMat);
       saNodeMesh.position.set(-1.18, 1.45, 0.25);
       saNodeMesh.userData = { id: 'sa_node' };
       conductionGroup.add(saNodeMesh);
 
-      // 2. AV Node
       avNodeMesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), nodeMat);
       avNodeMesh.position.set(-0.1, 0.4, 0.15);
       avNodeMesh.userData = { id: 'av_node' };
       conductionGroup.add(avNodeMesh);
 
-      // 3. Bachmann Bundle & Internodal Pathways (SA -> AV)
       const saToAvCurve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(-1.18, 1.45, 0.25),
         new THREE.Vector3(-0.7, 0.9, 0.35),
         new THREE.Vector3(-0.1, 0.4, 0.15)
       ]);
-      const saToAv = new THREE.Mesh(new THREE.TubeGeometry(saToAvCurve, 20, 0.035, 8, false), pathwayMat);
-      conductionGroup.add(saToAv);
+      conductionGroup.add(new THREE.Mesh(new THREE.TubeGeometry(saToAvCurve, 20, 0.035, 8, false), pathwayMat));
 
-      // 4. His Bundle down into Interventricular Septum
       const hisCurve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(-0.1, 0.4, 0.15),
         new THREE.Vector3(-0.05, 0.05, 0.15),
@@ -1357,12 +1536,11 @@
       hisBundleMesh = new THREE.Mesh(new THREE.TubeGeometry(hisCurve, 16, 0.04, 8, false), pathwayMat);
       conductionGroup.add(hisBundleMesh);
 
-      // 5. Left & Right Bundle Branches (Tawara-Schenkel)
       const rightBranchCurve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(0.0, -0.3, 0.18),
         new THREE.Vector3(-0.35, -0.6, 0.38),
         new THREE.Vector3(-0.55, -0.9, 0.32),
-        new THREE.Vector3(-0.65, -1.05, 0.15) // Right Purkinje
+        new THREE.Vector3(-0.65, -1.05, 0.15)
       ]);
       rightBranchMesh = new THREE.Mesh(new THREE.TubeGeometry(rightBranchCurve, 24, 0.03, 8, false), pathwayMat);
       conductionGroup.add(rightBranchMesh);
@@ -1371,12 +1549,10 @@
         new THREE.Vector3(0.0, -0.3, 0.18),
         new THREE.Vector3(0.25, -0.65, 0.25),
         new THREE.Vector3(0.38, -1.05, 0.3),
-        new THREE.Vector3(0.42, -1.35, 0.15) // Apex Purkinje
+        new THREE.Vector3(0.42, -1.35, 0.15)
       ]);
       leftBranchMesh = new THREE.Mesh(new THREE.TubeGeometry(leftBranchCurve, 24, 0.035, 8, false), pathwayMat);
       conductionGroup.add(leftBranchMesh);
-
-      conductionLines = [saToAv, hisBundleMesh, rightBranchMesh, leftBranchMesh];
     }
 
     function updateConductionImpulse() {
@@ -1387,7 +1563,6 @@
       conductionGroup.visible = true;
 
       const p = STATE.phase;
-      // SA Node fires at start of beat (0.00 .. 0.15) -> lights up P-wave
       if (p < 0.15) {
         saNodeMesh.material.emissiveIntensity = 2.2;
         saNodeMesh.scale.setScalar(1.4);
@@ -1396,7 +1571,6 @@
         saNodeMesh.scale.setScalar(1.0);
       }
 
-      // AV Node delay & conduction (0.15 .. 0.25)
       if (p >= 0.15 && p < 0.26) {
         avNodeMesh.material.emissiveIntensity = 2.4;
         avNodeMesh.scale.setScalar(1.35);
@@ -1405,9 +1579,7 @@
         avNodeMesh.scale.setScalar(1.0);
       }
 
-      // Ventricular Bundle Branches & Purkinje Fire (0.26 .. 0.35) -> QRS Peak!
       if (p >= 0.25 && p < 0.36) {
-        const glow = 2.5;
         hisBundleMesh.material.color.setHex(0xffffff);
         rightBranchMesh.material.color.setHex(0x38bdf8);
         leftBranchMesh.material.color.setHex(0xfacc15);
@@ -1419,7 +1591,7 @@
     }
 
     /* ===================================================================
-       6. BLOOD FLOW PARTICLES
+       5. BLUTFLUSS-PARTIKEL
        =================================================================== */
     let blueCurve1, blueCurve2, redCurve1, redCurve2;
 
@@ -1505,7 +1677,7 @@
         phaseSpeedMultiplier = 0.8;
       }
 
-      const activityMultiplier = STATE.bpm / 70;
+      const activityMultiplier = Math.max(0.2, Math.min(4.0, STATE.bpm / 70));
 
       bloodParticles.forEach(p => {
         p.visible = true;
@@ -1517,7 +1689,7 @@
     }
 
     /* ===================================================================
-       7. 3D ANNOTATION LABELS
+       6. 3D-BESCHRIFTUNGEN
        =================================================================== */
     function createAnnotationPins() {
       const container = document.getElementById('annotationsLayer');
@@ -1526,9 +1698,9 @@
 
       anatomicalStructures.forEach(item => {
         const el = document.createElement('div');
-        el.className = 'annotation-label absolute px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-900/90 text-cyan-300 border border-cyan-500/50 shadow-xl cursor-pointer whitespace-nowrap flex items-center gap-1.5';
+        el.className = 'annotation-label absolute px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg text-[9px] sm:text-[10px] font-bold bg-slate-900/90 text-cyan-300 border border-cyan-500/50 shadow-xl cursor-pointer whitespace-nowrap flex items-center gap-1 sm:gap-1.5 active:scale-95';
         el.innerHTML = `
-          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+          <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-cyan-400 animate-ping"></span>
           <span>${item.name.split('(')[0].trim()}</span>
         `;
         el.addEventListener('click', (e) => {
@@ -1575,7 +1747,7 @@
       popover.classList.remove('hidden');
       if (anchorEl) {
         const rect = anchorEl.getBoundingClientRect();
-        popover.style.left = `${Math.min(window.innerWidth - 300, Math.max(10, rect.left - 50))}px`;
+        popover.style.left = `${Math.min(window.innerWidth - 290, Math.max(10, rect.left - 40))}px`;
         popover.style.top = `${Math.max(60, rect.top - 140)}px`;
       } else {
         popover.style.left = '50%';
@@ -1608,7 +1780,7 @@
     }
 
     /* ===================================================================
-       8. BIOMECHANICAL MYOCARDIAL CONTRACTION & TORSION
+       7. KONTRAKTIONS-KINEMATIK & TORSION
        =================================================================== */
     let s1Played = false;
     let s2Played = false;
@@ -1632,7 +1804,7 @@
         const f2 = Math.cos(STATE.time * 55) * 0.05;
         ventriclesGroup.scale.set(1.0 + f1, 1.0 + f2, 1.0 + f1);
         ventriclesGroup.rotation.y = f1 * 0.5;
-        updatePhaseUI('Kammerflimmern (Kreislaufstillstand)', 'Funktionsloser elektrischer Sturm (>300/min). Das Myokard zuckt unkoordiniert, das Auswurfvolumen beträgt 0 ml! Nutze den Defibrillator!');
+        updatePhaseUI('Kammerflimmern (Kreislaufstillstand)', 'Funktionsloser elektrischer Sturm. Auswurf = 0! Nutze den Defibrillator!');
         return;
       }
 
@@ -1642,6 +1814,7 @@
       let aortaExpansion = 1.0;
 
       if (p < 0.20) {
+        // Vorhof-Systole
         const t = p / 0.20;
         const squeeze = Math.sin(t * Math.PI) * 0.18;
         atriaScale = 1.0 - squeeze;
@@ -1652,9 +1825,10 @@
         aorticValve.scale.setScalar(0.9);
         pulmonaryValve.scale.setScalar(0.9);
 
-        updatePhaseUI('1. Vorhof-Systole (Aktive Füllung)', 'Die Vorhöfe kontrahieren synchron und werfen das restliche Blutvolumen über die geöffneten Segelklappen in die erschlafften Kammern.');
+        updatePhaseUI('1. Vorhof-Systole (Aktive Füllung)', 'Vorhöfe kontrahieren synchron und werfen Blut über die Segelklappen in die Kammern.');
       } 
       else if (p >= 0.20 && p < 0.28) {
+        // Anspannungsphase
         const t = (p - 0.20) / 0.08;
         ventricleScale = 1.0 - t * 0.06;
         torsionAngle = t * 0.04;
@@ -1664,9 +1838,10 @@
         aorticValve.scale.setScalar(0.85);
         pulmonaryValve.scale.setScalar(0.85);
 
-        updatePhaseUI('2. Anspannungsphase (Isovolumetrisch)', 'Alle 4 Klappen sind fest verschlossen. Das Kammermyokard spannt sich extrem an, der Innendruck schießt explosionsartig in die Höhe.');
+        updatePhaseUI('2. Anspannungsphase (Isovolumetrisch)', 'Alle 4 Klappen geschlossen. Kammermyokard spannt sich extrem an, Innendruck schießt hoch.');
       } 
       else if (p >= 0.28 && p < 0.52) {
+        // Austreibungsphase & Wring-Torsion
         const t = (p - 0.28) / 0.24;
         const squeeze = Math.sin(t * Math.PI) * 0.24;
         ventricleScale = 0.94 - squeeze;
@@ -1678,9 +1853,10 @@
         aorticValve.scale.setScalar(1.35);
         pulmonaryValve.scale.setScalar(1.35);
 
-        updatePhaseUI('3. Austreibungsphase (Kammer-Systole & Torsion)', 'Taschenklappen öffnen sich: Unter wringender Drehung (Torsion) wirft der linke Ventrikel ca. 70 ml Blut mit 120 mmHg in die Aorta aus.');
+        updatePhaseUI('3. Austreibungsphase (Kammer-Systole & Torsion)', 'Taschenklappen öffnen: Apex dreht sich (Wring-Effekt), Blut wird mit Hochdruck in die Aorta ausgeworfen.');
       } 
       else {
+        // Diastole
         const t = (p - 0.52) / 0.48;
         const rebound = Math.sin(t * Math.PI * 0.5);
         ventricleScale = 0.76 + rebound * 0.24;
@@ -1693,7 +1869,7 @@
         aorticValve.scale.setScalar(0.85);
         pulmonaryValve.scale.setScalar(0.85);
 
-        updatePhaseUI('4. Entspannungsphase & Diastole', 'Die Herzkammern erschlaffen und drehen sich elastisch zurück. Der diastolische Sog füllt das Myokard und die Koronargefäße mit neuem Blut.');
+        updatePhaseUI('4. Entspannungsphase & Diastole', 'Herzkammern erschlaffen. Diastolischer Sog füllt das Myokard und Koronarien mit neuem Blut.');
       }
 
       if (STATE.rhythm !== 'afib') {
@@ -1723,32 +1899,43 @@
     }
 
     /* ===================================================================
-       9. REAL-TIME EKG & PRESSURE MONITORS
+       8. KORRIGIERTE EKG- & DRUCKKURVEN-MONITORE
        =================================================================== */
-    let ecgCanvas, ecgCtx, pressureCanvas, pressureCtx;
+    let ecgCanvasDesktop, ecgCtxDesktop, pressureCanvasDesktop, pressureCtxDesktop;
+    let ecgCanvasMobile, ecgCtxMobile, pressureCanvasMobile, pressureCtxMobile;
     let ecgBuffer = [], pressureBuffer = [];
     const ECG_BUFFER_SIZE = 400, PRESSURE_BUFFER_SIZE = 250;
     let ecgScanIndex = 0, pressureScanIndex = 0;
 
     function initMonitors() {
-      ecgCanvas = document.getElementById('ecgCanvas');
-      ecgCtx = ecgCanvas.getContext('2d');
-      pressureCanvas = document.getElementById('pressureCanvas');
-      pressureCtx = pressureCanvas.getContext('2d');
+      ecgCanvasDesktop = document.getElementById('ecgCanvasDesktop');
+      if (ecgCanvasDesktop) ecgCtxDesktop = ecgCanvasDesktop.getContext('2d');
+
+      pressureCanvasDesktop = document.getElementById('pressureCanvasDesktop');
+      if (pressureCanvasDesktop) pressureCtxDesktop = pressureCanvasDesktop.getContext('2d');
+
+      for (let i = 0; i < ECG_BUFFER_SIZE; i++) ecgBuffer[i] = 0;
+      for (let i = 0; i < PRESSURE_BUFFER_SIZE; i++) pressureBuffer[i] = 80;
 
       resizeCanvases();
-      for (let i = 0; i < ECG_BUFFER_SIZE; i++) ecgBuffer[i] = 0;
-      for (let i = 0; i < PRESSURE_BUFFER_SIZE; i++) pressureBuffer[i] = STATE.diastolic;
     }
 
     function resizeCanvases() {
-      if (ecgCanvas) {
-        ecgCanvas.width = ecgCanvas.parentElement.clientWidth;
-        ecgCanvas.height = ecgCanvas.parentElement.clientHeight;
+      if (ecgCanvasDesktop && ecgCanvasDesktop.parentElement) {
+        ecgCanvasDesktop.width = ecgCanvasDesktop.parentElement.clientWidth || 300;
+        ecgCanvasDesktop.height = ecgCanvasDesktop.parentElement.clientHeight || 120;
       }
-      if (pressureCanvas) {
-        pressureCanvas.width = pressureCanvas.parentElement.clientWidth;
-        pressureCanvas.height = pressureCanvas.parentElement.clientHeight;
+      if (pressureCanvasDesktop && pressureCanvasDesktop.parentElement) {
+        pressureCanvasDesktop.width = pressureCanvasDesktop.parentElement.clientWidth || 220;
+        pressureCanvasDesktop.height = pressureCanvasDesktop.parentElement.clientHeight || 120;
+      }
+      if (ecgCanvasMobile && ecgCanvasMobile.parentElement) {
+        ecgCanvasMobile.width = ecgCanvasMobile.parentElement.clientWidth || 300;
+        ecgCanvasMobile.height = ecgCanvasMobile.parentElement.clientHeight || 110;
+      }
+      if (pressureCanvasMobile && pressureCanvasMobile.parentElement) {
+        pressureCanvasMobile.width = pressureCanvasMobile.parentElement.clientWidth || 300;
+        pressureCanvasMobile.height = pressureCanvasMobile.parentElement.clientHeight || 100;
       }
     }
 
@@ -1765,6 +1952,14 @@
       }
 
       let v = 0;
+      if (STATE.species === 'mouse') {
+        if (phase >= 0.04 && phase <= 0.12) v += 0.15 * Math.sin(((phase - 0.04) / 0.08) * Math.PI);
+        if (phase > 0.20 && phase <= 0.24) v -= 0.2 * Math.sin(((phase - 0.20) / 0.04) * Math.PI);
+        if (phase > 0.24 && phase <= 0.30) v += 1.6 * Math.sin(((phase - 0.24) / 0.06) * Math.PI);
+        if (phase > 0.30 && phase <= 0.45) v += 0.4 * Math.exp(-((phase - 0.30) * 12));
+        return v + (Math.random() - 0.5) * 0.02;
+      }
+
       if (STATE.rhythm !== 'afib') {
         if (phase >= 0.05 && phase <= 0.15) v += 0.22 * Math.sin(((phase - 0.05) / 0.10) * Math.PI);
       } else {
@@ -1778,40 +1973,44 @@
       return v + (Math.random() - 0.5) * 0.02;
     }
 
-    function renderECG() {
-      if (!ecgCtx) return;
-      const w = ecgCanvas.width, h = ecgCanvas.height;
+    function drawECGOnCtx(ctx, canvas) {
+      if (!ctx || !canvas || canvas.width === 0 || canvas.height === 0) return;
+      const w = canvas.width, h = canvas.height;
       const midY = h * 0.55, scaleY = h * 0.42;
 
-      if (!STATE.isPaused) {
-        ecgBuffer[ecgScanIndex] = getECGVoltage(STATE.phase);
-        ecgScanIndex = (ecgScanIndex + 1) % ECG_BUFFER_SIZE;
-      }
-
-      ecgCtx.clearRect(0, 0, w, h);
-      ecgCtx.lineWidth = 2.2;
-      ecgCtx.strokeStyle = STATE.isPaused ? '#34d399' : '#10b981';
-      ecgCtx.shadowColor = '#10b981';
-      ecgCtx.shadowBlur = STATE.isPaused ? 4 : 8;
-      ecgCtx.beginPath();
+      ctx.clearRect(0, 0, w, h);
+      ctx.lineWidth = 2.2;
+      ctx.strokeStyle = STATE.isPaused ? '#34d399' : '#10b981';
+      ctx.shadowColor = '#10b981';
+      ctx.shadowBlur = STATE.isPaused ? 4 : 8;
+      ctx.beginPath();
 
       for (let i = 0; i < ECG_BUFFER_SIZE; i++) {
         const x = (i / ECG_BUFFER_SIZE) * w;
         const y = midY - ecgBuffer[i] * scaleY;
         const dist = (i - ecgScanIndex + ECG_BUFFER_SIZE) % ECG_BUFFER_SIZE;
         if (!STATE.isPaused && dist > ECG_BUFFER_SIZE - 12) continue;
-        if (i === 0) ecgCtx.moveTo(x, y);
-        else ecgCtx.lineTo(x, y);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
       }
-      ecgCtx.stroke();
-      ecgCtx.shadowBlur = 0;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
 
       const headX = (ecgScanIndex / ECG_BUFFER_SIZE) * w;
       const headY = midY - ecgBuffer[ecgScanIndex] * scaleY;
-      ecgCtx.fillStyle = STATE.isPaused ? '#fbbf24' : '#6ee7b7';
-      ecgCtx.beginPath();
-      ecgCtx.arc(headX, headY, 3.5, 0, Math.PI * 2);
-      ecgCtx.fill();
+      ctx.fillStyle = STATE.isPaused ? '#fbbf24' : '#6ee7b7';
+      ctx.beginPath();
+      ctx.arc(headX, headY, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function renderECG() {
+      if (!STATE.isPaused) {
+        ecgBuffer[ecgScanIndex] = getECGVoltage(STATE.phase);
+        ecgScanIndex = (ecgScanIndex + 1) % ECG_BUFFER_SIZE;
+      }
+      drawECGOnCtx(ecgCtxDesktop, ecgCanvasDesktop);
+      drawECGOnCtx(ecgCtxMobile, ecgCanvasMobile);
     }
 
     function getAorticPressure(phase) {
@@ -1821,141 +2020,270 @@
       if (phase >= 0.28 && phase < 0.52) {
         return dia + (sys - dia) * Math.sin(((phase - 0.28) / 0.24) * Math.PI);
       } else if (phase >= 0.52 && phase < 0.58) {
-        return dia + (sys - dia) * 0.35;
+        return dia + (sys - dia) * 0.35; // Dicrotie
       } else {
         const t = phase < 0.28 ? (phase + 0.42) / 0.9 : (phase - 0.58) / 0.42;
         return dia + (sys - dia) * 0.25 * Math.exp(-t * 1.8);
       }
     }
 
-    function renderPressure() {
-      if (!pressureCtx) return;
-      const w = pressureCanvas.width, h = pressureCanvas.height;
+    function drawPressureOnCtx(ctx, canvas) {
+      if (!ctx || !canvas || canvas.width === 0 || canvas.height === 0) return;
+      const w = canvas.width, h = canvas.height;
       const maxPressure = 200;
 
-      if (!STATE.isPaused) {
-        pressureBuffer[pressureScanIndex] = getAorticPressure(STATE.phase);
-        pressureScanIndex = (pressureScanIndex + 1) % PRESSURE_BUFFER_SIZE;
-      }
+      ctx.clearRect(0, 0, w, h);
 
-      pressureCtx.clearRect(0, 0, w, h);
-      pressureCtx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-      pressureCtx.lineWidth = 1;
-      const y120 = h - (120 / maxPressure) * h;
-      const y80 = h - (80 / maxPressure) * h;
-      pressureCtx.beginPath();
-      pressureCtx.moveTo(0, y120); pressureCtx.lineTo(w, y120);
-      pressureCtx.moveTo(0, y80); pressureCtx.lineTo(w, y80);
-      pressureCtx.stroke();
+      // Hilfslinien für Systole & Diastole
+      const sysY = h - (STATE.systolic / maxPressure) * h;
+      const diaY = h - (STATE.diastolic / maxPressure) * h;
 
-      pressureCtx.lineWidth = 2.0;
-      pressureCtx.strokeStyle = STATE.isPaused ? '#38bdf8' : '#06b6d4';
-      pressureCtx.shadowColor = '#06b6d4';
-      pressureCtx.shadowBlur = STATE.isPaused ? 3 : 6;
-      pressureCtx.beginPath();
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.25)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(0, sysY); ctx.lineTo(w, sysY);
+      ctx.moveTo(0, diaY); ctx.lineTo(w, diaY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.85)';
+      ctx.font = '9px monospace';
+      ctx.fillText(`${STATE.systolic} mm`, 4, Math.max(10, sysY - 2));
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.75)';
+      ctx.fillText(`${STATE.diastolic} mm`, 4, Math.min(h - 3, diaY - 2));
+
+      // Druckkurve
+      ctx.lineWidth = 2.2;
+      ctx.strokeStyle = STATE.isPaused ? '#38bdf8' : '#06b6d4';
+      ctx.shadowColor = '#06b6d4';
+      ctx.shadowBlur = STATE.isPaused ? 3 : 6;
+      ctx.beginPath();
 
       for (let i = 0; i < PRESSURE_BUFFER_SIZE; i++) {
         const x = (i / PRESSURE_BUFFER_SIZE) * w;
-        const val = pressureBuffer[i];
+        const val = pressureBuffer[i] !== undefined ? pressureBuffer[i] : STATE.diastolic;
         const y = h - (val / maxPressure) * h;
         const dist = (i - pressureScanIndex + PRESSURE_BUFFER_SIZE) % PRESSURE_BUFFER_SIZE;
         if (!STATE.isPaused && dist > PRESSURE_BUFFER_SIZE - 8) continue;
-        if (i === 0) pressureCtx.moveTo(x, y);
-        else pressureCtx.lineTo(x, y);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
       }
-      pressureCtx.stroke();
-      pressureCtx.shadowBlur = 0;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Scan-Punkt
+      const headX = (pressureScanIndex / PRESSURE_BUFFER_SIZE) * w;
+      const currVal = pressureBuffer[pressureScanIndex] !== undefined ? pressureBuffer[pressureScanIndex] : STATE.diastolic;
+      const headY = h - (currVal / maxPressure) * h;
+      ctx.fillStyle = STATE.isPaused ? '#fbbf24' : '#22d3ee';
+      ctx.beginPath();
+      ctx.arc(headX, headY, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function renderPressure() {
+      const currPress = getAorticPressure(STATE.phase);
+      if (!STATE.isPaused) {
+        pressureBuffer[pressureScanIndex] = currPress;
+        pressureScanIndex = (pressureScanIndex + 1) % PRESSURE_BUFFER_SIZE;
+      }
+
+      // Live-Wert im Titel aktualisieren
+      const liveTextEl = document.getElementById('pressureLiveValText');
+      if (liveTextEl) liveTextEl.innerText = `${Math.round(currPress)} mmHg`;
+
+      drawPressureOnCtx(pressureCtxDesktop, pressureCanvasDesktop);
+      drawPressureOnCtx(pressureCtxMobile, pressureCanvasMobile);
     }
 
     /* ===================================================================
-       10. MEDICAL ANALYSIS & CLINICAL UPDATES
+       9. ALLOMETRISCHE PHYSIOLOGIE & BERICHTE
        =================================================================== */
     function updateMedicalDashboard() {
-      const preset = ACTIVITY_PRESETS[STATE.activity];
-      let targetBpm = preset.bpm, sys = preset.sys, dia = preset.dia, sv = preset.sv;
+      const spec = SPECIES_CONFIGS[STATE.species];
+      const actPreset = ACTIVITY_PRESETS[STATE.activity];
       const rhythmInfo = RHYTHM_CONFIGS[STATE.rhythm];
 
-      if (rhythmInfo.bpmOverride) targetBpm = rhythmInfo.bpmOverride;
-      if (rhythmInfo.sysFactor) sys = Math.round(sys * rhythmInfo.sysFactor);
-      if (rhythmInfo.fatal) { sys = 20; dia = 10; sv = 0; }
+      let targetBpm = Math.round(spec.baseBpm * actPreset.factor * rhythmInfo.factor);
+      let sys = Math.round(spec.sys * (0.85 + 0.15 * actPreset.factor));
+      let dia = Math.round(spec.dia * (0.9 + 0.1 * actPreset.factor));
+      let sv = spec.strokeVolumeMl;
 
-      STATE.bpm = targetBpm;
+      if (rhythmInfo.fatal) {
+        sys = 20;
+        dia = 10;
+        sv = 0;
+      }
+
+      STATE.bpm = Math.max(4, targetBpm);
       STATE.systolic = sys;
       STATE.diastolic = dia;
       STATE.strokeVolume = sv;
-      STATE.cardiacOutput = ((STATE.bpm * STATE.strokeVolume) / 1000).toFixed(1);
+
+      let coVal = (STATE.bpm * STATE.strokeVolume) / 1000;
+      let coUnit = 'l/min';
+      let coDisplay = coVal.toFixed(1);
+
+      if (STATE.species === 'mouse') {
+        coVal = STATE.bpm * STATE.strokeVolume;
+        coUnit = 'ml/min';
+        coDisplay = coVal.toFixed(0);
+      } else if (STATE.species === 'whale') {
+        coUnit = 'l/min';
+        coDisplay = coVal.toFixed(0);
+      }
+
+      STATE.cardiacOutput = coDisplay;
 
       document.getElementById('headerBpm').innerText = STATE.bpm;
       document.getElementById('headerBp').innerText = `${STATE.systolic}/${STATE.diastolic}`;
       document.getElementById('headerCo').innerText = STATE.cardiacOutput;
-      document.getElementById('strokeVolumeText').innerText = `${STATE.strokeVolume} ml`;
-      document.getElementById('efText').innerText = STATE.rhythm === 'vfib' ? '0%' : '60%';
-      document.getElementById('rhythmTitleBadge').innerText = rhythmInfo.name;
+      const coUnitEl = document.getElementById('headerCoUnit');
+      if (coUnitEl) coUnitEl.innerText = coUnit;
 
-      const notesEl = document.getElementById('medicalNotes');
-      if (STATE.rhythm === 'sinus') {
-        notesEl.innerHTML = `
-          <div class="p-2 rounded bg-slate-800/80 border-l-2 border-emerald-500">
-            <strong class="text-emerald-400">Physiologischer Befund (${preset.name}):</strong>
-            <p class="text-slate-300 mt-0.5">Normale Erregungsausbreitung über Sinus- & AV-Knoten. Auswurfvolumen von <strong>${STATE.cardiacOutput} l/min</strong> deckt den Sauerstoffbedarf ideal ab.</p>
+      const svEl = document.getElementById('strokeVolumeText');
+      if (svEl) {
+        if (STATE.species === 'mouse') svEl.innerText = `${(STATE.strokeVolume * 1000).toFixed(0)} µl`;
+        else if (STATE.species === 'whale') svEl.innerText = `${(STATE.strokeVolume / 1000).toFixed(0)} Liter`;
+        else svEl.innerText = `${STATE.strokeVolume} ml`;
+      }
+
+      const efEl = document.getElementById('efText');
+      if (efEl) efEl.innerText = STATE.rhythm === 'vfib' ? '0%' : '60%';
+      
+      const badge = document.getElementById('rhythmTitleBadge');
+      if (badge) badge.innerText = rhythmInfo.name;
+
+      const spHeader = document.getElementById('speciesHeaderBadge');
+      if (spHeader) spHeader.innerText = `${spec.icon} ${spec.name.split('(')[0].trim()}`;
+
+      const spPill = document.getElementById('speciesStatusPill');
+      if (spPill) spPill.innerText = spec.name.split('(')[0].trim();
+
+      let notesHtml = `
+        <div class="p-2.5 rounded bg-slate-800/80 border-l-2 border-cyan-500 space-y-1">
+          <div class="flex items-center justify-between text-cyan-300 font-bold">
+            <span>${spec.icon} ${spec.name}</span>
+            <span class="text-[10px] text-slate-400 font-mono">Gewicht: ${spec.heartMass}</span>
+          </div>
+          <p class="text-slate-300 text-[11px]">${spec.notes}</p>
+          <div class="text-[10px] text-slate-400 pt-1 border-t border-slate-700/60 flex justify-between font-mono">
+            <span>Körper: ${spec.bodyMass}</span>
+            <span>HMV: ${STATE.cardiacOutput} ${coUnit}</span>
+          </div>
+        </div>
+      `;
+
+      if (STATE.rhythm === 'vfib') {
+        notesHtml += `
+          <div class="p-2.5 rounded bg-red-950/90 border-l-2 border-red-500 animate-pulse mt-2">
+            <strong class="text-red-300">🚨 Akuter Kreislaufstillstand (Kammerflimmern)!</strong>
+            <p class="text-slate-200 mt-0.5 text-[11px]">Schlagvolumen = 0 ml. Nutze den <strong>⚡ Defibrillator</strong>!</p>
           </div>
         `;
-      } else if (STATE.rhythm === 'afib') {
-        notesEl.innerHTML = `
-          <div class="p-2 rounded bg-purple-950/70 border-l-2 border-purple-500">
-            <strong class="text-purple-300">Vorhofflimmern (AFib):</strong>
-            <p class="text-slate-300 mt-0.5">Chaotische Vorhofaktionen verhindern die koordinierte Vorhofkontraktion. Gefahr der Thrombenbildung im linken Herzohr. Frequenzkontrolle (z. B. Betablocker) indiziert.</p>
-          </div>
-        `;
-      } else if (STATE.rhythm === 'vfib') {
-        notesEl.innerHTML = `
-          <div class="p-2 rounded bg-red-950/90 border-l-2 border-red-500 animate-pulse">
-            <strong class="text-red-300">AKUTER NOTFALL: Kammerflimmern!</strong>
-            <p class="text-slate-200 mt-0.5">Kreislaufstillstand. Klicke jetzt oben auf <strong>⚡ Defibrillator</strong>, um das Herz mit einem 200J-Schock zu kardiovertieren!</p>
-          </div>
-        `;
-      } else if (STATE.rhythm === 'pvc') {
-        notesEl.innerHTML = `
-          <div class="p-2 rounded bg-amber-950/70 border-l-2 border-amber-500">
-            <strong class="text-amber-300">Ventrikuläre Extrasystole:</strong>
-            <p class="text-slate-300 mt-0.5">Vorzeitige Erregung im Kammermyokard. Die nachfolgende kompensatorische Pause führt zu erhöhter Vorlast und spürbarem Pochen.</p>
-          </div>
-        `;
-      } else {
-        notesEl.innerHTML = `
-          <div class="p-2 rounded bg-blue-950/70 border-l-2 border-blue-500">
-            <strong class="text-blue-300">${rhythmInfo.name}:</strong>
-            <p class="text-slate-300 mt-0.5">Frequenzadaption auf ${STATE.bpm} BPM bei ${preset.name}.</p>
-          </div>
-        `;
+      }
+
+      const notesDesktop = document.getElementById('medicalNotesDesktop');
+      if (notesDesktop) notesDesktop.innerHTML = notesHtml;
+      
+      const notesMobile = document.getElementById('mobileMedicalNotesContainer');
+      if (notesMobile) notesMobile.innerHTML = notesHtml;
+
+      const ecgCal = document.getElementById('ecgSpeedCalibration');
+      if (ecgCal) {
+        if (STATE.species === 'mouse') ecgCal.innerText = '100 mm/s (High-Speed Sweep)';
+        else if (STATE.species === 'whale') ecgCal.innerText = '5 mm/s (Deep-Slow Sweep)';
+        else ecgCal.innerText = '25 mm/s | 10 mm/mV';
       }
     }
 
     /* ===================================================================
-       11. CLINICAL INTERVENTIONS (DEFIBRILLATOR & MEDICATIONS)
+       10. TRANSFORMATION DER TIERART-MORPHOLOGIE
        =================================================================== */
-    function triggerDefibrillation() {
+    function applySpecies3DTransform(speciesKey) {
+      const spec = SPECIES_CONFIGS[speciesKey];
+      if (!spec || !heartGroup) return;
+
+      if (leftVentricle && rightVentricle) {
+        leftVentricle.geometry.dispose();
+        leftVentricle.geometry = createSculptedVentricleGeo(speciesKey, true);
+
+        rightVentricle.geometry.dispose();
+        rightVentricle.geometry = createSculptedVentricleGeo(speciesKey, false);
+      }
+
+      if (leftAtrium && rightAtrium && leftAuricle && rightAuricle) {
+        if (speciesKey === 'mouse') {
+          leftAtrium.scale.set(1.15, 1.15, 1.1);
+          rightAtrium.scale.set(1.18, 1.25, 1.18);
+          leftAuricle.scale.set(1.25, 1.3, 1.25);
+          rightAuricle.scale.set(1.3, 1.35, 1.3);
+        } else if (speciesKey === 'whale') {
+          leftAtrium.scale.set(1.25, 0.85, 1.2);
+          rightAtrium.scale.set(1.25, 0.95, 1.2);
+          leftAuricle.scale.set(1.3, 0.9, 1.2);
+          rightAuricle.scale.set(1.3, 0.95, 1.2);
+        } else if (speciesKey === 'cat') {
+          leftAtrium.scale.set(0.82, 0.88, 0.78);
+          rightAtrium.scale.set(0.8, 0.92, 0.8);
+          leftAuricle.scale.set(0.85, 0.9, 0.85);
+          rightAuricle.scale.set(0.85, 0.9, 0.85);
+        } else {
+          leftAtrium.scale.set(0.92, 0.9, 0.82);
+          rightAtrium.scale.set(0.88, 1.05, 0.88);
+          leftAuricle.scale.set(1.0, 1.0, 1.0);
+          rightAuricle.scale.set(1.0, 1.0, 1.0);
+        }
+      }
+
+      const aortaMat = aortaMesh.material;
+      buildAorticBranches(speciesKey, aortaMat);
+
+      const targetScale = spec.scale3D;
+      heartGroup.scale.set(targetScale.x, targetScale.y, targetScale.z);
+
+      if (speciesKey === 'whale') {
+        aortaMesh.scale.set(1.4, 1.15, 1.4);
+      } else if (speciesKey === 'mouse') {
+        aortaMesh.scale.set(0.82, 0.88, 0.82);
+      } else {
+        aortaMesh.scale.set(1.0, 1.0, 1.0);
+      }
+
+      updateMedicalDashboard();
+    }
+
+    function setSpecies(speciesKey) {
+      STATE.species = speciesKey;
+      document.querySelectorAll('.species-btn').forEach(b => {
+        const isSelected = b.getAttribute('data-species') === speciesKey;
+        b.classList.toggle('active', isSelected);
+        b.classList.toggle('border-cyan-500', isSelected);
+        b.classList.toggle('bg-cyan-950/50', isSelected);
+        b.classList.toggle('text-cyan-300', isSelected);
+        b.classList.toggle('border-slate-800', !isSelected);
+        b.classList.toggle('bg-slate-900/60', !isSelected);
+        b.classList.toggle('text-slate-200', !isSelected);
+      });
+
+      applySpecies3DTransform(speciesKey);
       initAudio();
-      playDefibrillationSound();
+    }
 
-      // Screen flash
-      const flash = document.getElementById('defibFlashOverlay');
-      flash.classList.remove('defib-flash');
-      void flash.offsetWidth; // Trigger reflow
-      flash.classList.add('defib-flash');
-
-      // Convert rhythm to normal sinus
-      setTimeout(() => {
-        setRhythm('sinus');
-        updateMedicalDashboard();
-        const notesEl = document.getElementById('medicalNotes');
-        notesEl.innerHTML = `
-          <div class="p-2 rounded bg-emerald-950/80 border-l-2 border-emerald-400">
-            <strong class="text-emerald-300">⚡ Erfolgreiche Defibrillation (200 J biphasisch):</strong>
-            <p class="text-slate-200 mt-0.5">Kammerflimmern beendet! Der Sinusknoten hat die elektrische Schrittmacherfunktion erfolgreich wieder übernommen. Blutdruck normalisiert sich.</p>
-          </div>
-        `;
-      }, 350);
+    function setActivity(stateName) {
+      STATE.activity = stateName;
+      document.querySelectorAll('.state-btn').forEach(b => {
+        const isSelected = b.getAttribute('data-state') === stateName;
+        b.classList.toggle('active', isSelected);
+        b.classList.toggle('border-cyan-500', isSelected);
+        b.classList.toggle('bg-cyan-950/40', isSelected);
+        b.classList.toggle('text-cyan-300', isSelected);
+        b.classList.toggle('border-slate-800', !isSelected);
+        b.classList.toggle('bg-slate-900/60', !isSelected);
+        b.classList.toggle('text-slate-200', !isSelected);
+      });
+      updateMedicalDashboard();
     }
 
     function setRhythm(rhythmName) {
@@ -1973,8 +2301,23 @@
       updateMedicalDashboard();
     }
 
+    function triggerDefibrillation() {
+      initAudio();
+      playDefibrillationSound();
+
+      const flash = document.getElementById('defibFlashOverlay');
+      flash.classList.remove('defib-flash');
+      void flash.offsetWidth;
+      flash.classList.add('defib-flash');
+
+      setTimeout(() => {
+        setRhythm('sinus');
+        updateMedicalDashboard();
+      }, 350);
+    }
+
     /* ===================================================================
-       12. GUIDED TOUR LOGIC
+       11. LERN-TOUR LOGIK
        =================================================================== */
     let tourTargetPos = null;
     let tourTargetLook = null;
@@ -1982,22 +2325,17 @@
     function setTourStep(stepIndex) {
       STATE.tourStep = Math.max(0, Math.min(TOUR_STEPS.length - 1, stepIndex));
       const step = TOUR_STEPS[STATE.tourStep];
+      const isMobile = window.innerWidth < 768;
+
       document.getElementById('tourStepText').innerText = step.title;
 
-      tourTargetPos = new THREE.Vector3(step.camPos.x, step.camPos.y, step.camPos.z);
+      const zDist = isMobile ? step.camPos.z * 1.15 : step.camPos.z;
+      tourTargetPos = new THREE.Vector3(step.camPos.x, step.camPos.y, zDist);
       tourTargetLook = new THREE.Vector3(step.target.x, step.target.y, step.target.z);
-
-      const notesEl = document.getElementById('medicalNotes');
-      notesEl.innerHTML = `
-        <div class="p-2 rounded bg-cyan-950/70 border-l-2 border-cyan-400">
-          <strong class="text-cyan-300">${step.title}:</strong>
-          <p class="text-slate-300 mt-0.5">${step.desc}</p>
-        </div>
-      `;
     }
 
     /* ===================================================================
-       13. PAUSE / PLAY & UI HANDLERS
+       12. PAUSE / PLAY & MOBILE DRAWER LOGIK
        =================================================================== */
     function togglePauseState() {
       STATE.isPaused = !STATE.isPaused;
@@ -2017,33 +2355,274 @@
       if (STATE.isPaused) {
         pauseIcon.classList.add('hidden');
         playIcon.classList.remove('hidden');
-        pauseBtnText.innerText = 'Fortsetzen (Leertaste)';
+        if (pauseBtnText) pauseBtnText.innerText = 'Fortsetzen';
         floatingPauseIcon.classList.add('hidden');
         floatingPlayIcon.classList.remove('hidden');
-        floatingPauseText.innerText = 'Fortsetzen';
-        pauseBtn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-600 shadow-lg transition';
+        if (floatingPauseText) floatingPauseText.innerText = 'Fortsetzen';
+        pauseBtn.className = 'flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-medium bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-600 shadow-lg transition active:scale-95';
         pausedBadge.classList.remove('hidden');
         pulseIndicator.classList.remove('animate-ping');
         pulseIndicator.classList.add('bg-amber-400');
-        ecgLiveDot.classList.remove('animate-pulse');
-        ecgLiveDot.classList.add('bg-amber-400');
+        if (ecgLiveDot) {
+          ecgLiveDot.classList.remove('animate-pulse');
+          ecgLiveDot.classList.add('bg-amber-400');
+        }
       } else {
         pauseIcon.classList.remove('hidden');
         playIcon.classList.add('hidden');
-        pauseBtnText.innerText = 'Pause (Leertaste)';
+        if (pauseBtnText) pauseBtnText.innerText = 'Pause';
         floatingPauseIcon.classList.remove('hidden');
         floatingPlayIcon.classList.add('hidden');
-        floatingPauseText.innerText = 'Pause';
-        pauseBtn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-950/70 hover:bg-amber-900/80 text-amber-300 border border-amber-600/60 shadow-lg transition';
+        if (floatingPauseText) floatingPauseText.innerText = 'Pause';
+        pauseBtn.className = 'flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-medium bg-amber-950/70 hover:bg-amber-900/80 text-amber-300 border border-amber-600/60 shadow-lg transition active:scale-95';
         pausedBadge.classList.add('hidden');
         pulseIndicator.classList.add('animate-ping');
         pulseIndicator.classList.remove('bg-amber-400');
-        ecgLiveDot.classList.add('animate-pulse');
-        ecgLiveDot.classList.remove('bg-amber-400');
+        if (ecgLiveDot) {
+          ecgLiveDot.classList.add('animate-pulse');
+          ecgLiveDot.classList.remove('bg-amber-400');
+        }
       }
     }
 
+    function openMobileDrawer(tabType) {
+      const drawer = document.getElementById('mobileDrawer');
+      const drawerTitle = document.getElementById('drawerTitle');
+      const drawerIcon = document.getElementById('drawerIcon');
+      const drawerBody = document.getElementById('drawerBody');
+
+      STATE.currentMobileTab = tabType;
+
+      document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
+        const isSelected = btn.getAttribute('data-tab') === tabType;
+        btn.classList.toggle('text-cyan-400', isSelected);
+        btn.classList.toggle('font-bold', isSelected);
+        btn.classList.toggle('text-slate-400', !isSelected);
+      });
+
+      if (tabType === '3d') {
+        drawer.classList.add('translate-y-full');
+        setTimeout(() => drawer.classList.add('hidden'), 300);
+        return;
+      }
+
+      drawer.classList.remove('hidden');
+      void drawer.offsetWidth;
+      drawer.classList.remove('translate-y-full');
+
+      if (tabType === 'controls') {
+        drawerIcon.innerText = '⚡';
+        drawerTitle.innerText = 'Tierart, Steuerung & Notfall';
+        const tmpl = document.getElementById('controlsTemplate');
+        drawerBody.innerHTML = '';
+        drawerBody.appendChild(tmpl.content.cloneNode(true));
+        attachControlPanelEvents(drawerBody);
+        syncButtonsState();
+      } 
+      else if (tabType === 'monitors') {
+        drawerIcon.innerText = '📈';
+        drawerTitle.innerText = `Live-EKG & Druck (${SPECIES_CONFIGS[STATE.species].name.split('(')[0].trim()})`;
+        drawerBody.innerHTML = `
+          <div class="space-y-3">
+            <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 ecg-grid">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-mono font-bold text-emerald-400">EKG ABLEITUNG II</span>
+                <span class="text-[10px] text-emerald-400 font-mono">${STATE.bpm} BPM</span>
+              </div>
+              <div class="h-28 w-full relative">
+                <canvas id="ecgCanvasMobile" class="w-full h-full block"></canvas>
+              </div>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-mono font-bold text-cyan-400">AORTEN-DRUCK (mmHg)</span>
+                <span class="text-[10px] text-cyan-300 font-mono">${STATE.systolic}/${STATE.diastolic} mmHg</span>
+              </div>
+              <div class="h-24 w-full relative">
+                <canvas id="pressureCanvasMobile" class="w-full h-full block"></canvas>
+              </div>
+            </div>
+          </div>
+        `;
+        ecgCanvasMobile = document.getElementById('ecgCanvasMobile');
+        if (ecgCanvasMobile) ecgCtxMobile = ecgCanvasMobile.getContext('2d');
+        pressureCanvasMobile = document.getElementById('pressureCanvasMobile');
+        if (pressureCanvasMobile) pressureCtxMobile = pressureCanvasMobile.getContext('2d');
+        resizeCanvases();
+      }
+      else if (tabType === 'notes') {
+        drawerIcon.innerText = '📋';
+        drawerTitle.innerText = 'Vergleichende Physiologie';
+        drawerBody.innerHTML = `
+          <div class="space-y-3">
+            <div id="mobileMedicalNotesContainer"></div>
+            <button id="mobileDetailBtn" class="w-full py-2.5 rounded-lg bg-cyan-600/80 hover:bg-cyan-500 text-white font-bold text-xs transition active:scale-95">
+              📖 Allometrie & Kleibersches Gesetz im Detail
+            </button>
+          </div>
+        `;
+        updateMedicalDashboard();
+        const mBtn = document.getElementById('mobileDetailBtn');
+        if (mBtn) mBtn.addEventListener('click', () => {
+          document.getElementById('detailModal').classList.remove('hidden');
+        });
+      }
+    }
+
+    function closeMobileDrawer() {
+      openMobileDrawer('3d');
+    }
+
+    function syncButtonsState() {
+      setSpecies(STATE.species);
+      setActivity(STATE.activity);
+      setRhythm(STATE.rhythm);
+
+      document.querySelectorAll('.toggle-cutaway-btn').forEach(btn => {
+        btn.innerText = STATE.isCutaway ? 'Ein (Schnitt)' : 'Aus (Außen)';
+        btn.className = STATE.isCutaway 
+          ? 'toggle-cutaway-btn px-2.5 py-1 rounded bg-cyan-950/80 border border-cyan-600 text-cyan-300 text-[11px] font-medium transition'
+          : 'toggle-cutaway-btn px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-slate-400 text-[11px] font-medium transition';
+      });
+
+      document.querySelectorAll('.toggle-conduction-btn').forEach(btn => {
+        btn.innerText = STATE.showConduction ? 'Sichtbar (Ein)' : 'Ausgeblendet';
+        btn.className = STATE.showConduction 
+          ? 'toggle-conduction-btn px-2.5 py-1 rounded bg-yellow-950/80 border border-yellow-700 text-yellow-300 text-[11px] font-medium transition'
+          : 'toggle-conduction-btn px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-slate-400 text-[11px] font-medium transition';
+      });
+
+      document.querySelectorAll('.toggle-coronaries-btn').forEach(btn => {
+        btn.innerText = STATE.showCoronaries ? 'Sichtbar (Ein)' : 'Ausgeblendet';
+        btn.className = STATE.showCoronaries 
+          ? 'toggle-coronaries-btn px-2.5 py-1 rounded bg-red-950/80 border border-red-700 text-red-300 text-[11px] font-medium transition'
+          : 'toggle-coronaries-btn px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-slate-400 text-[11px] font-medium transition';
+      });
+
+      document.querySelectorAll('.toggle-particles-btn').forEach(btn => {
+        btn.innerText = STATE.showParticles ? 'Sichtbar (Ein)' : 'Ausgeblendet';
+        btn.className = STATE.showParticles 
+          ? 'toggle-particles-btn px-2.5 py-1 rounded bg-emerald-950/70 border border-emerald-700 text-emerald-300 text-[11px] font-medium transition'
+          : 'toggle-particles-btn px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-slate-400 text-[11px] font-medium transition';
+      });
+
+      document.querySelectorAll('.toggle-labels-btn').forEach(btn => {
+        btn.innerText = STATE.showLabels ? 'Labels: Ein' : 'Labels: Aus';
+      });
+    }
+
+    function attachControlPanelEvents(container) {
+      container.querySelectorAll('.species-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          setSpecies(btn.getAttribute('data-species'));
+        });
+      });
+
+      container.querySelectorAll('.state-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          initAudio();
+          setActivity(btn.getAttribute('data-state'));
+        });
+      });
+
+      container.querySelectorAll('.rhythm-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          initAudio();
+          setRhythm(btn.getAttribute('data-rhythm'));
+        });
+      });
+
+      container.querySelectorAll('.defib-btn').forEach(btn => {
+        btn.addEventListener('click', triggerDefibrillation);
+      });
+
+      container.querySelectorAll('.med-adrenaline-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          initAudio();
+          setActivity('stress');
+          setRhythm('tachy');
+        });
+      });
+
+      container.querySelectorAll('.med-betablocker-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          initAudio();
+          setActivity('rest');
+          setRhythm('sinus');
+        });
+      });
+
+      container.querySelectorAll('.med-atropine-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          initAudio();
+          setActivity('rest');
+          setRhythm('sinus');
+        });
+      });
+
+      container.querySelectorAll('.toggle-cutaway-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          STATE.isCutaway = !STATE.isCutaway;
+          const planes = STATE.isCutaway ? [cutawayPlane] : [];
+          leftVentricle.material.clippingPlanes = planes;
+          rightVentricle.material.clippingPlanes = planes;
+          leftAtrium.material.clippingPlanes = planes;
+          rightAtrium.material.clippingPlanes = planes;
+          if (septumMesh) septumMesh.material.clippingPlanes = planes;
+          syncButtonsState();
+        });
+      });
+
+      container.querySelectorAll('.toggle-conduction-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          STATE.showConduction = !STATE.showConduction;
+          conductionGroup.visible = STATE.showConduction;
+          syncButtonsState();
+        });
+      });
+
+      container.querySelectorAll('.toggle-coronaries-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          STATE.showCoronaries = !STATE.showCoronaries;
+          coronariesGroup.visible = STATE.showCoronaries;
+          syncButtonsState();
+        });
+      });
+
+      container.querySelectorAll('.toggle-particles-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          STATE.showParticles = !STATE.showParticles;
+          syncButtonsState();
+        });
+      });
+
+      container.querySelectorAll('.toggle-labels-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          STATE.showLabels = !STATE.showLabels;
+          syncButtonsState();
+        });
+      });
+    }
+
     function setupUIEventListeners() {
+      const sidebarContent = document.getElementById('sidebarContent');
+      const tmpl = document.getElementById('controlsTemplate');
+      sidebarContent.appendChild(tmpl.content.cloneNode(true));
+      attachControlPanelEvents(sidebarContent);
+
+      document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tab = btn.getAttribute('data-tab');
+          if (tab === STATE.currentMobileTab && tab !== '3d') {
+            closeMobileDrawer();
+          } else {
+            openMobileDrawer(tab);
+          }
+        });
+      });
+
+      document.getElementById('closeDrawerBtn').addEventListener('click', closeMobileDrawer);
+
       document.getElementById('pauseToggleBtn').addEventListener('click', togglePauseState);
       document.getElementById('floatingPauseBtn').addEventListener('click', togglePauseState);
 
@@ -2054,152 +2633,31 @@
         }
       });
 
-      // Activity state buttons
-      document.querySelectorAll('.state-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          initAudio();
-          document.querySelectorAll('.state-btn').forEach(b => {
-            b.classList.remove('active', 'border-cyan-500', 'bg-cyan-950/40', 'text-cyan-300');
-            b.classList.add('border-slate-800', 'bg-slate-900/60', 'text-slate-200');
-          });
-          btn.classList.add('active', 'border-cyan-500', 'bg-cyan-950/40', 'text-cyan-300');
-          btn.classList.remove('border-slate-800', 'bg-slate-900/60');
-          STATE.activity = btn.getAttribute('data-state');
-          updateMedicalDashboard();
-        });
-      });
-
-      // Rhythm buttons
-      document.querySelectorAll('.rhythm-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          initAudio();
-          setRhythm(btn.getAttribute('data-rhythm'));
-        });
-      });
-
-      // Intervention Buttons
-      document.getElementById('defibBtn').addEventListener('click', triggerDefibrillation);
-
-      document.getElementById('medAdrenalineBtn').addEventListener('click', () => {
-        initAudio();
-        STATE.activity = 'stress';
-        setRhythm('tachy');
-        const notesEl = document.getElementById('medicalNotes');
-        notesEl.innerHTML = `
-          <div class="p-2 rounded bg-amber-950/70 border-l-2 border-amber-500">
-            <strong class="text-amber-300">💉 Adrenalin (1 mg i.v.) verabreicht:</strong>
-            <p class="text-slate-300 mt-0.5">Stimulation der $\\beta_1$- und $\\alpha_1$-Rezeptoren: Erhöhte Herzfrequenz (positiv chronotrop) und gesteigerter Blutdruck (155/95 mmHg).</p>
-          </div>
-        `;
-      });
-
-      document.getElementById('medBetablockerBtn').addEventListener('click', () => {
-        initAudio();
-        STATE.activity = 'rest';
-        setRhythm('sinus');
-        const notesEl = document.getElementById('medicalNotes');
-        notesEl.innerHTML = `
-          <div class="p-2 rounded bg-blue-950/70 border-l-2 border-blue-500">
-            <strong class="text-blue-300">💊 Betablocker (z.B. Metoprolol 5mg i.v.):</strong>
-            <p class="text-slate-300 mt-0.5">Dämpfung des Sympathikustonus. Frequenzstabilisierung auf 65-70 BPM, Entlastung des Myokards.</p>
-          </div>
-        `;
-      });
-
-      document.getElementById('medAtropineBtn').addEventListener('click', () => {
-        initAudio();
-        STATE.activity = 'rest';
-        setRhythm('sinus');
-        const notesEl = document.getElementById('medicalNotes');
-        notesEl.innerHTML = `
-          <div class="p-2 rounded bg-emerald-950/70 border-l-2 border-emerald-500">
-            <strong class="text-emerald-300">🧪 Atropin (0.5 mg i.v.) verabreicht:</strong>
-            <p class="text-slate-300 mt-0.5">Parasympathikolyse blockiert den Vagusnerv am Sinusknoten und behebt eine Bradykardie zuverlässig.</p>
-          </div>
-        `;
-      });
-
-      // 4-Chamber Cutaway Toggle
-      const cutBtn = document.getElementById('toggleCutawayBtn');
-      cutBtn.addEventListener('click', () => {
-        STATE.isCutaway = !STATE.isCutaway;
-        cutBtn.innerText = STATE.isCutaway ? 'Ein (4-Kammer-Schnitt)' : 'Aus (Außenansicht)';
-        cutBtn.className = STATE.isCutaway 
-          ? 'px-2.5 py-1 rounded bg-cyan-950/80 border border-cyan-600 text-cyan-300 text-[11px] font-medium transition'
-          : 'px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-slate-400 text-[11px] font-medium transition';
-
-        const planes = STATE.isCutaway ? [cutawayPlane] : [];
-        leftVentricle.material.clippingPlanes = planes;
-        rightVentricle.material.clippingPlanes = planes;
-        leftAtrium.material.clippingPlanes = planes;
-        rightAtrium.material.clippingPlanes = planes;
-      });
-
-      // Conduction system toggle
-      const condBtn = document.getElementById('toggleConductionBtn');
-      condBtn.addEventListener('click', () => {
-        STATE.showConduction = !STATE.showConduction;
-        condBtn.innerText = STATE.showConduction ? 'Sichtbar (Ein)' : 'Ausgeblendet';
-        condBtn.className = STATE.showConduction 
-          ? 'px-2.5 py-1 rounded bg-yellow-950/80 border border-yellow-700 text-yellow-300 text-[11px] font-medium transition'
-          : 'px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-slate-400 text-[11px] font-medium transition';
-        conductionGroup.visible = STATE.showConduction;
-      });
-
-      // Coronaries toggle
-      const coroBtn = document.getElementById('toggleCoronariesBtn');
-      coroBtn.addEventListener('click', () => {
-        STATE.showCoronaries = !STATE.showCoronaries;
-        coronariesGroup.visible = STATE.showCoronaries;
-        coroBtn.innerText = STATE.showCoronaries ? 'Sichtbar (Ein)' : 'Ausgeblendet';
-        coroBtn.className = STATE.showCoronaries 
-          ? 'px-2.5 py-1 rounded bg-red-950/80 border border-red-700 text-red-300 text-[11px] font-medium transition'
-          : 'px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-slate-400 text-[11px] font-medium transition';
-      });
-
-      // Blood flow particles toggle
-      const partBtn = document.getElementById('toggleParticlesBtn');
-      partBtn.addEventListener('click', () => {
-        STATE.showParticles = !STATE.showParticles;
-        partBtn.innerText = STATE.showParticles ? 'Sichtbar (Ein)' : 'Ausgeblendet';
-        partBtn.className = STATE.showParticles 
-          ? 'px-2.5 py-1 rounded bg-emerald-950/70 border border-emerald-700 text-emerald-300 text-[11px] font-medium transition'
-          : 'px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-slate-400 text-[11px] font-medium transition';
-      });
-
-      // Labels toggle
-      const labelBtn = document.getElementById('toggleLabelsBtn');
-      labelBtn.addEventListener('click', () => {
-        STATE.showLabels = !STATE.showLabels;
-        labelBtn.innerText = STATE.showLabels ? 'Labels: Ein' : 'Labels: Aus';
-      });
-
-      // Audio toggle
       const audioBtn = document.getElementById('audioToggleBtn');
       audioBtn.addEventListener('click', () => {
         initAudio();
         STATE.audioEnabled = !STATE.audioEnabled;
         document.getElementById('audioIconOn').classList.toggle('hidden', !STATE.audioEnabled);
         document.getElementById('audioIconOff').classList.toggle('hidden', STATE.audioEnabled);
-        document.getElementById('audioStatusText').innerText = STATE.audioEnabled ? 'Herztöne: An' : 'Herztöne: Aus';
+        const statusText = document.getElementById('audioStatusText');
+        if (statusText) statusText.innerText = STATE.audioEnabled ? 'Ton: An' : 'Ton: Aus';
       });
 
-      // Guided tour buttons
       document.getElementById('tourPrevBtn').addEventListener('click', () => setTourStep(STATE.tourStep - 1));
       document.getElementById('tourNextBtn').addEventListener('click', () => setTourStep(STATE.tourStep + 1));
 
-      // Camera reset
       document.getElementById('resetCameraBtn').addEventListener('click', () => {
-        tourTargetPos = new THREE.Vector3(0, 1.2, 8.0);
+        const isMobile = window.innerWidth < 768;
+        tourTargetPos = new THREE.Vector3(0, isMobile ? 1.0 : 1.2, isMobile ? 8.8 : 8.0);
         tourTargetLook = new THREE.Vector3(0, 0.2, 0);
       });
 
-      // Modals
       const modal = document.getElementById('detailModal');
       const openModal = () => modal.classList.remove('hidden');
       const closeModal = () => modal.classList.add('hidden');
       document.getElementById('guideBtn').addEventListener('click', openModal);
-      document.getElementById('detailModalBtn').addEventListener('click', openModal);
+      const dBtn = document.getElementById('detailModalBtn');
+      if (dBtn) dBtn.addEventListener('click', openModal);
       document.getElementById('closeModalBtn').addEventListener('click', closeModal);
       document.getElementById('closeModalFooterBtn').addEventListener('click', closeModal);
 
@@ -2211,14 +2669,18 @@
     function onWindowResize() {
       const container = document.getElementById('canvasContainer');
       if (!container || !renderer || !camera) return;
+
+      const isMobile = window.innerWidth < 768;
+      camera.fov = isMobile ? 48 : 42;
       camera.aspect = container.clientWidth / container.clientHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(container.clientWidth, container.clientHeight);
+
       resizeCanvases();
     }
 
     /* ===================================================================
-       14. MAIN ANIMATION & RENDERING LOOP
+       13. HAUPT-RENDERING & ANIMATIONS-SCHLEIFE
        =================================================================== */
     let clock = new THREE.Clock();
 
@@ -2227,7 +2689,6 @@
 
       const delta = clock.getDelta();
 
-      // Smooth camera interpolation for guided tour
       if (tourTargetPos) {
         camera.position.lerp(tourTargetPos, 0.045);
         if (tourTargetLook) controls.target.lerp(tourTargetLook, 0.045);
@@ -2258,6 +2719,7 @@
       initMonitors();
       setupUIEventListeners();
       setupGlobalAudioUnlock();
+      setSpecies('human');
       updateMedicalDashboard();
       mainAnimationLoop();
     };
