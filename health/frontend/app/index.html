@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <!-- Google Consent Mode v2: alles standardmässig abgelehnt. gtag.js wird erst
+         nach ausdrücklicher Einwilligung geladen (siehe src/consent.js). -->
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('consent', 'default', {
+            ad_storage: 'denied',
+            ad_user_data: 'denied',
+            ad_personalization: 'denied',
+            analytics_storage: 'denied',
+            functionality_storage: 'denied',
+            personalization_storage: 'denied',
+            security_storage: 'granted'
+        });
+        gtag('set', 'ads_data_redaction', true);
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraMind – Mental Balance Coach</title>
+    <script>
+        // Theme vor dem ersten Rendern setzen, damit beim Laden nichts aufblitzt.
+        (function () {
+            var theme = null;
+            try { theme = localStorage.getItem('auramind_theme'); } catch (e) { /* ignore */ }
+            if (theme !== 'light' && theme !== 'dark') {
+                theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+            }
+            document.documentElement.classList.add(theme);
+        })();
+    </script>
+</head>
+
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-teal-500 selection:text-slate-950">
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 sm:px-6">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer select-none" onclick="app.switchTab('coach')">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-500 via-teal-400 to-emerald-400 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-teal-500/20">
+                    ☯
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-base font-bold text-white tracking-tight">AuraMind</h1>
+                        <span class="text-[12px] px-2 py-0.5 rounded-full bg-teal-950 text-teal-300 border border-teal-800 font-semibold">
+                            Balance Coach
+                        </span>
+                    </div>
+                    <p class="text-[13px] text-slate-400 hidden sm:block">Akut-Begleitung bei Übererregung, Erschöpfung & Mischzuständen</p>
+                </div>
+            </div>
+
+            <!-- Top Actions & Navigation Tabs -->
+            <div class="flex items-center space-x-1 sm:space-x-2">
+                <button onclick="app.openModal('modal-sos')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold transition shadow-md shadow-rose-950/40">
+                    <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                    <span>SOS</span>
+                </button>
+
+                <button onclick="app.openSafetyPlan()" class="px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-teal-400 text-xs transition" title="Persönlicher Sicherheitsplan">
+                    🛡️
+                </button>
+
+                <button onclick="app.openModal('modal-tools')" class="px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-teal-400 text-xs transition" title="Notfall-Skills & Übungen">
+                    🧰
+                </button>
+
+                <button id="theme-toggle" onclick="app.toggleTheme()" class="px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-xs transition" title="Hell/Dunkel umschalten">
+                    <span class="theme-icon-dark">☀️</span>
+                    <span class="theme-icon-light">🌙</span>
+                </button>
+
+                <nav class="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 text-xs">
+                    <button id="nav-coach" onclick="app.switchTab('coach')" class="px-3 py-1.5 rounded-lg transition font-medium text-slate-300 hover:text-white flex items-center gap-1.5">
+                        <span>🧭</span>
+                        <span class="hidden md:inline">Coach</span>
+                    </button>
+                    <button id="nav-tracking" onclick="app.switchTab('tracking')" class="px-3 py-1.5 rounded-lg transition font-medium text-slate-300 hover:text-white flex items-center gap-1.5">
+                        <span>📈</span>
+                        <span class="hidden md:inline">Tracking</span>
+                    </button>
+                    <button id="nav-history" onclick="app.switchTab('history')" class="px-3 py-1.5 rounded-lg transition font-medium text-slate-300 hover:text-white flex items-center gap-1.5">
+                        <span>📋</span>
+                        <span class="hidden md:inline">Verlauf</span>
+                        <span id="history-badge" class="ml-0.5 px-1.5 py-0.2 rounded-full bg-slate-800 text-[12px] text-teal-300 border border-slate-700 hidden">0</span>
+                    </button>
+                    <button id="nav-profile" onclick="app.switchTab('profile')" class="hidden px-3 py-1.5 rounded-lg transition font-medium text-slate-300 hover:text-white flex items-center gap-1.5">
+                        <span>👤</span>
+                        <span class="hidden md:inline">Profil</span>
+                    </button>
+                </nav>
+
+                <button id="user-action-btn" onclick="app.handleUserHeaderAction()" class="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-400 hover:text-rose-400 transition" title="Konto">
+                    🚪
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 w-full max-w-5xl mx-auto p-4 sm:p-6 flex flex-col">
+
+        <!-- ================= TAB: COACH ================= -->
+        <section id="tab-coach" class="flex-1 flex flex-col">
+
+            <!-- SUBSTEP 1: Assessment Form -->
+            <div id="coach-step-assessment" class="max-w-2xl mx-auto my-auto w-full space-y-6 py-4">
+                <div class="text-center space-y-2">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-950/60 border border-teal-800 text-teal-300 text-xs font-medium">
+                        <span>✨</span>
+                        <span>Verhaltensbasierter Check-in (keine Vorkenntnisse nötig)</span>
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                        Wie geht es dir in den letzten 24 bis 48 Stunden?
+                    </h2>
+                    <p class="text-xs sm:text-sm text-slate-400 max-w-lg mx-auto">
+                        Du musst dich nicht selbst diagnostizieren. Beantworte einfach deine realen Alltagssignale – das System ermittelt dein Profil automatisch.
+                    </p>
+                </div>
+
+                <form id="assessment-form" onsubmit="event.preventDefault(); app.submitAssessment();" class="space-y-4">
+                    <!-- Frage 1: Energie & Schlaf -->
+                    <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+                        <label class="block text-xs sm:text-sm font-bold text-slate-200">
+                            1. Wie verhalten sich dein Energielevel und dein Schlafbedürfnis?
+                        </label>
+                        <div class="space-y-2 text-xs">
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="energySleep" value="high_mania" required class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">⚡ Kaum Schlaf nötig, voller Tatendrang</span>
+                                    <span class="text-[13px] text-slate-400">Ich schlafe nur 2–4 Stunden, fühle mich elektrisiert, hellwach oder rastlos.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="energySleep" value="low_dep" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🌧️ Bleierne Schwere & Erschöpfung</span>
+                                    <span class="text-[13px] text-slate-400">Jede Bewegung kostet Kraft. Ich liege viel oder wache völlig zerschlagen auf.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="energySleep" value="agitated_mixed" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🌪️ Körperlich getrieben, aber geistig erschöpft</span>
+                                    <span class="text-[13px] text-slate-400">Ich kann nicht stillsitzen, fühle mich unter Strom, empfinde aber Druck oder Verzweiflung.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="energySleep" value="balanced" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🌱 Ausgeglichener Normalbereich</span>
+                                    <span class="text-[13px] text-slate-400">Regulärer Schlaf (6–8 Std.) und stabiles Energielevel.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Frage 2: Gedanken & Sprechtempo -->
+                    <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+                        <label class="block text-xs sm:text-sm font-bold text-slate-200">
+                            2. Wie verhalten sich deine Gedanken und dein Sprechtempo?
+                        </label>
+                        <div class="space-y-2 text-xs">
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="thoughtSpeed" value="racing_mania" required class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🚀 Gedankenrasen & ständiges Überschlagen</span>
+                                    <span class="text-[13px] text-slate-400">Ideen sprudeln pausenlos, ich rede schnell und will 10 Dinge gleichzeitig tun.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="thoughtSpeed" value="foggy_dep" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🌫️ Wie durch Nebel / Leere</span>
+                                    <span class="text-[13px] text-slate-400">Denken fällt extrem schwer, Worte fehlen, Entscheidungen blockieren mich.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="thoughtSpeed" value="looping_mixed" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🔄 Rasende, quälende Grübelschleifen</span>
+                                    <span class="text-[13px] text-slate-400">Schnelle Gedanken um Ängste, Vorwürfe, Bedrohung oder Ärger.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="thoughtSpeed" value="normal" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">⚖️ Klares, normales Denktempo</span>
+                                    <span class="text-[13px] text-slate-400">Konzentration ist im gewohnten Rahmen möglich.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Frage 3: Verhalten & Impulskontrolle -->
+                    <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+                        <label class="block text-xs sm:text-sm font-bold text-slate-200">
+                            3. Welches Verhalten spiegelt deine aktuelle Verfassung am ehesten wider?
+                        </label>
+                        <div class="space-y-2 text-xs">
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="behavior" value="risk_mania" required class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🛍️ Spontane Ausgaben, Euphorie oder Übermut</span>
+                                    <span class="text-[13px] text-slate-400">Starker Drang Geld auszugeben, ungefilterte Nachrichten abzusenden oder riskante Pläne.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="behavior" value="retreat_dep" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🚪 Völliger Rückzug & Schuldgefühle</span>
+                                    <span class="text-[13px] text-slate-400">Ich antworte niemandem, ziehe mich ins Dunkle zurück und fühle mich wertlos.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="behavior" value="irritable_mixed" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">💥 Extreme Reizbarkeit & Reizüberflutung</span>
+                                    <span class="text-[13px] text-slate-400">Geräusche und Menschen nerven mich sofort; ich fahre schnell aus der Haut.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="behavior" value="stable" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🤝 Ausgeglichene Reaktionen</span>
+                                    <span class="text-[13px] text-slate-400">Ich kann meine Impulse gut steuern und gelassen bleiben.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Frage 4: Zusätzliche Akutsymptome -->
+                    <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+                        <label class="block text-xs sm:text-sm font-bold text-slate-200">
+                            4. Spezifische Begleitsymptome (Optional):
+                        </label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            <label class="flex items-center space-x-2.5 p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/60 cursor-pointer hover:bg-slate-800">
+                                <input type="checkbox" name="symptoms" value="shopping" class="rounded text-teal-500">
+                                <span>Starker Drang zum Online-Shopping</span>
+                            </label>
+                            <label class="flex items-center space-x-2.5 p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/60 cursor-pointer hover:bg-slate-800">
+                                <input type="checkbox" name="symptoms" value="heavy" class="rounded text-teal-500">
+                                <span>Körper fühlt sich wie Blei an</span>
+                            </label>
+                            <label class="flex items-center space-x-2.5 p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/60 cursor-pointer hover:bg-slate-800">
+                                <input type="checkbox" name="symptoms" value="tension" class="rounded text-teal-500">
+                                <span>Engegefühl / Druck auf der Brust</span>
+                            </label>
+                            <label class="flex items-center space-x-2.5 p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/60 cursor-pointer hover:bg-slate-800">
+                                <input type="checkbox" name="symptoms" value="no_appetite" class="rounded text-teal-500">
+                                <span>Essen vergessen / Kein Appetit</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 text-center">
+                        <button type="submit" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-sm transition shadow-lg shadow-teal-500/25 active:scale-95">
+                            Antworten auswerten & Ziele wählen →
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- SUBSTEP 2: Goal Selection -->
+            <div id="coach-step-goals" class="hidden max-w-2xl mx-auto my-auto w-full space-y-6 py-4">
+                <div id="deduced-profile-card" class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3"></div>
+
+                <div class="space-y-3">
+                    <h4 class="text-xs font-bold text-teal-400 uppercase tracking-wider">
+                        Empfohlenes Stabilisierungsziel wählen:
+                    </h4>
+                    <div id="goals-list-container" class="space-y-2"></div>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-2">
+                    <label class="block text-xs font-bold text-slate-300">
+                        Oder formuliere ein eigenes, akutes Anliegen:
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="text" id="custom-goal-input" placeholder="z. B. Heute vor 23 Uhr Handy ausschalten und ins Bett gehen..." maxlength="255" class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500">
+                        <button onclick="app.startCoachWithCustomGoal()" class="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition shrink-0">
+                            Starten
+                        </button>
+                    </div>
+                </div>
+
+                <div class="text-left">
+                    <button onclick="app.showCoachStep('assessment')" class="text-xs text-slate-400 hover:text-white transition">
+                        ← Zurück zur Fragenanpassung
+                    </button>
+                </div>
+            </div>
+
+            <!-- SUBSTEP 3: Live Coach Chat -->
+            <div id="coach-step-chat" class="hidden flex-1 flex flex-col h-[calc(100vh-140px)] max-h-[820px] rounded-3xl bg-slate-900/50 border border-slate-800/80 overflow-hidden shadow-2xl">
+                <div class="p-3 sm:p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div id="chat-header-avatar" class="w-9 h-9 rounded-2xl bg-teal-950 border border-teal-700 text-teal-300 flex items-center justify-center font-bold text-base shadow-inner">
+                            ☯
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-white">AuraMind Coach</span>
+                                <span id="chat-profile-badge" class="text-[12px] px-2 py-0.5 rounded-full font-semibold border">
+                                    Profil aktiv
+                                </span>
+                                <span id="chat-ai-status" class="text-[12px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                                    Lokale KVT-Engine
+                                </span>
+                            </div>
+                            <p id="chat-current-goal" class="text-[13px] text-slate-400 truncate max-w-xs sm:max-w-md">
+                                Ziel: ...
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <button onclick="app.openModal('modal-breathing')" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-teal-300 text-xs font-semibold transition flex items-center gap-1.5">
+                            <span>🫁</span>
+                            <span class="hidden sm:inline">4-7-8 Atmung</span>
+                        </button>
+                        <button onclick="app.startNewCheckin()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs transition" title="Neuer Check-in">
+                            🔄
+                        </button>
+                    </div>
+                </div>
+
+                <div id="chat-messages-container" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
+
+                <div id="chat-quick-replies" class="px-4 py-2 bg-slate-900/60 border-t border-slate-800 flex gap-2 overflow-x-auto text-xs"></div>
+
+                <div class="p-3 bg-slate-900 border-t border-slate-800 flex items-center gap-2">
+                    <input type="text" id="chat-input" placeholder="Schreibe deinem Coach oder schildere deine Gedanken..." maxlength="2000" onkeydown="if(event.key==='Enter') app.sendChatMessage();" class="flex-1 bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-500">
+                    <button id="chat-send-btn" onclick="app.sendChatMessage()" class="px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition shadow-md shadow-teal-500/20 active:scale-95 flex items-center gap-1">
+                        <span>Senden</span>
+                        <span>➤</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB: TRACKING (Life-Charting & Behavioral Activation) ================= -->
+        <section id="tab-tracking" class="hidden max-w-3xl mx-auto w-full space-y-6 py-4">
+            <div class="pb-3 border-b border-slate-800">
+                <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                    <span>📈</span>
+                    <span>Tägliches Tracking</span>
+                </h2>
+                <p class="text-xs text-slate-400">
+                    Basiert auf der klinischen Life-Charting-Methode: Stimmung, Schlaf und Rhythmus über Zeit sichtbar machen –
+                    das eigentliche Frühwarnsystem bei starken Stimmungsschwankungen.
+                </p>
+            </div>
+
+            <div id="tracking-flags" class="space-y-2"></div>
+
+            <!-- Heutiger Check-in -->
+            <form id="checkin-form" onsubmit="event.preventDefault(); app.saveCheckin();" class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+                <h3 class="text-sm font-bold text-white">Heutiger Check-in</h3>
+
+                <div class="space-y-1.5">
+                    <label class="flex justify-between text-xs font-bold text-slate-300">
+                        <span>Stimmung heute</span>
+                        <span id="checkin-mood-value" class="text-teal-400">0</span>
+                    </label>
+                    <input type="range" id="checkin-mood" min="-5" max="5" value="0" step="1" oninput="document.getElementById('checkin-mood-value').textContent = this.value" class="w-full accent-teal-500">
+                    <div class="flex justify-between text-[12px] text-slate-500">
+                        <span>-5 stark depressiv</span>
+                        <span>0 ausgeglichen</span>
+                        <span>+5 stark manisch</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-slate-300">Schlaf (Std.)</label>
+                        <input type="number" id="checkin-sleep" min="0" max="24" step="0.5" placeholder="7" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-slate-300">Aufgestanden um</label>
+                        <input type="time" id="checkin-wake" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-slate-300">Reizbarkeit</label>
+                        <select id="checkin-irritability" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                            <option value="0">Keine</option>
+                            <option value="1">Leicht</option>
+                            <option value="2">Deutlich</option>
+                            <option value="3">Extrem</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-slate-300">Medikation</label>
+                        <select id="checkin-medication" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                            <option value="">Keine Angabe</option>
+                            <option value="1">Genommen</option>
+                            <option value="0">Nicht genommen</option>
+                        </select>
+                    </div>
+                </div>
+
+                <label class="flex items-center gap-2.5 text-xs">
+                    <input type="checkbox" id="checkin-social" class="rounded text-teal-500">
+                    <span>Hatte heute sozialen Kontakt</span>
+                </label>
+
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-300">Notiz (optional)</label>
+                    <input type="text" id="checkin-note" maxlength="500" placeholder="Besonderes Ereignis heute..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                </div>
+
+                <button type="submit" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition">
+                    Check-in speichern
+                </button>
+            </form>
+
+            <!-- Verlaufs-Chart -->
+            <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                <h3 class="text-sm font-bold text-white">Verlauf (letzte 30 Tage)</h3>
+                <div id="mood-chart-container" class="overflow-x-auto"></div>
+            </div>
+
+            <!-- Behavioral Activation -->
+            <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                <h3 class="text-sm font-bold text-white">Heutige Mini-Aktivitäten</h3>
+                <p class="text-xs text-slate-400">
+                    Plane 1–2 winzige, machbare Aktivitäten für heute – ganz ohne Leistungsdruck (Behavioral Activation).
+                    Handeln erzeugt oft erst im Nachhinein ein Gefühl von Erfolg oder Freude, nicht die Motivation vorher.
+                </p>
+
+                <div class="space-y-1.5">
+                    <button type="button" onclick="app.toggleActivitySuggestions()" id="activity-suggestions-toggle" class="text-xs text-teal-400 hover:text-teal-300 font-semibold transition">
+                        💡 Mir fällt nichts ein – zeig mir Vorschläge
+                    </button>
+                    <div id="activity-suggestions" class="hidden space-y-2 pt-1"></div>
+                </div>
+
+                <div id="activity-list" class="space-y-2"></div>
+
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="text" id="activity-input" maxlength="200" placeholder="z. B. 5 Minuten an die frische Luft" class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                    <select id="activity-difficulty" class="bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                        <option value="tiny">Winzig</option>
+                        <option value="small" selected>Klein</option>
+                        <option value="medium">Mittel</option>
+                    </select>
+                    <button onclick="app.addActivity()" class="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition shrink-0">
+                        Hinzufügen
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB: HISTORY ================= -->
+        <section id="tab-history" class="hidden max-w-3xl mx-auto w-full space-y-6 py-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div>
+                    <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                        <span>📋</span>
+                        <span>Gespeicherte Coaching-Sitzungen</span>
+                    </h2>
+                    <p id="history-subtitle" class="text-xs text-slate-400">
+                        Alle Antworten, Check-in-Ergebnisse und KI-Ratschläge verbleiben dauerhaft in deinem Verlauf.
+                    </p>
+                </div>
+            </div>
+
+            <div id="history-list-container" class="space-y-4"></div>
+        </section>
+
+        <!-- ================= TAB: PROFILE ================= -->
+        <section id="tab-profile" class="hidden max-w-2xl mx-auto w-full space-y-6 py-4">
+            <div class="pb-3 border-b border-slate-800">
+                <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                    <span>👤</span>
+                    <span>Dein persönliches Profil</span>
+                </h2>
+                <p class="text-xs text-slate-400">
+                    Diese Angaben helfen der App und der KI, die Ratschläge präzise auf deine Lebenssituation anzupassen.
+                </p>
+            </div>
+
+            <!-- Mein Coaching: aktuelle Sitzung fortsetzen/anpassen oder neue starten -->
+            <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-xl">
+                <div class="flex items-center justify-between gap-3">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2"><span>🧭</span> Mein Coaching</h3>
+                    <button type="button" onclick="app.startNewCheckin()" class="px-3 py-1.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-bold transition whitespace-nowrap">
+                        ＋ Neue Coaching-Sitzung
+                    </button>
+                </div>
+                <div id="profile-coaching" class="text-xs text-slate-400">Wird geladen…</div>
+            </div>
+
+            <form id="profile-form" onsubmit="event.preventDefault(); app.saveProfile();" class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-xl">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-300">Name / Rufname:</label>
+                        <input type="text" id="profile-name" required maxlength="120" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-300">E-Mail-Adresse:</label>
+                        <input type="email" id="profile-email" disabled class="w-full bg-slate-800/50 border border-slate-700/60 rounded-xl px-3 py-2 text-xs text-slate-400 cursor-not-allowed">
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-300">Alter:</label>
+                        <input type="number" id="profile-age" min="14" max="120" placeholder="z. B. 32" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-300">Zivilstand:</label>
+                        <select id="profile-civil-status" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                            <option value="Ledig">Ledig</option>
+                            <option value="In Partnerschaft / Beziehung">In Partnerschaft / Beziehung</option>
+                            <option value="Verheiratet">Verheiratet</option>
+                            <option value="Eingetragene Partnerschaft">Eingetragene Partnerschaft</option>
+                            <option value="Getrennt lebend">Getrennt lebend</option>
+                            <option value="Geschieden">Geschieden</option>
+                            <option value="Verwitwet">Verwitwet</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-1.5 sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-300">Wohnort:</label>
+                        <input type="text" id="profile-location" placeholder="z. B. Zürich, Bern, Basel oder Berlin" maxlength="150" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                    </div>
+
+                    <div class="space-y-1.5 sm:col-span-2">
+                        <label class="block text-xs font-bold text-rose-300">Persönlicher Notfallkontakt (im Krisenfall):</label>
+                        <input type="text" id="profile-emergency-contact" placeholder="Name & Telefonnummer einer Vertrauensperson oder eines Arztes" maxlength="255" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                    </div>
+
+                    <div class="space-y-1.5 sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-300">Persönliche Trigger & Notizen für den Coach:</label>
+                        <textarea id="profile-notes" rows="3" maxlength="2000" placeholder="Was triggert dich? Woran merkst du frühzeitig, dass eine manische oder depressive Phase naht?" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-teal-500"></textarea>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex justify-end">
+                    <button type="submit" class="px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition shadow-md shadow-teal-500/20">
+                        Änderungen speichern
+                    </button>
+                </div>
+            </form>
+
+            <!-- Konto löschen -->
+            <div class="p-6 rounded-2xl bg-slate-900 border border-rose-900/60 space-y-3 shadow-xl">
+                <h3 class="text-base font-bold text-white flex items-center gap-2"><span>🗑️</span> Konto löschen</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">Löscht dein Konto und alle zugehörigen Daten endgültig: Profil, Coaching-Sitzungen, Chatverläufe, Check-ins, Aktivitäten, Sicherheitsplan und Kontaktanfragen. Damit widerrufst du auch deine Einwilligung zur Bearbeitung deiner Gesundheitsdaten. Das lässt sich nicht rückgängig machen.</p>
+                <div class="flex justify-end">
+                    <button type="button" onclick="app.openDeleteAccount()" class="px-4 py-2 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold transition">
+                        Konto endgültig löschen…
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB: ADMIN BACKEND ================= -->
+        <section id="tab-admin" class="hidden max-w-4xl mx-auto w-full space-y-6 py-4">
+
+            <div id="admin-login-view" class="max-w-md mx-auto p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-2xl">
+                <div class="text-center space-y-2">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-950 border border-amber-800 text-amber-300 flex items-center justify-center mx-auto text-xl">
+                        🔒
+                    </div>
+                    <h3 class="text-lg font-bold text-white">Admin-Backend Login</h3>
+                    <p class="text-xs text-slate-400">
+                        Zugang für Betreiber zur Hinterlegung des Google Gemini API-Keys und zur Systemüberwachung.
+                    </p>
+                </div>
+
+                <form onsubmit="event.preventDefault(); app.loginAdmin();" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Admin-PIN / Passwort:</label>
+                        <input type="password" id="admin-pin-input" placeholder="Admin-PIN eingeben" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                    </div>
+                    <button type="submit" class="w-full py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition">
+                        Im Admin-Bereich anmelden →
+                    </button>
+                </form>
+            </div>
+
+            <div id="admin-dashboard-view" class="hidden space-y-6">
+                <div class="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-slate-900 border border-amber-900/60 shadow-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-950/80 border border-amber-700 text-amber-300 flex items-center justify-center text-lg">
+                            ⚙️
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold text-white">AuraMind Admin-Konsole</h2>
+                            <p class="text-xs text-slate-400">Zentrale KI-Steuerung & Benutzerverwaltung</p>
+                        </div>
+                    </div>
+                    <button onclick="app.logoutAdmin()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-xs text-slate-300 transition">
+                        Admin-Abmeldung
+                    </button>
+                </div>
+
+                <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+                    <div class="flex items-center gap-2 pb-2 border-b border-slate-800">
+                        <span class="text-teal-400">🔑</span>
+                        <h3 class="text-sm font-bold text-white">Google Gemini API-Key Konfiguration</h3>
+                    </div>
+
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Der Key wird ausschließlich serverseitig gespeichert und genutzt – er verlässt das Backend nie
+                        in Richtung Browser. Hier siehst du nur eine maskierte Vorschau.
+                    </p>
+
+                    <div class="space-y-2">
+                        <label class="block text-xs font-semibold text-slate-300">Aktueller Key (maskiert):</label>
+                        <div id="admin-api-key-masked" class="px-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700 text-xs text-slate-400 font-mono">–</div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="block text-xs font-semibold text-slate-300">Neuen Gemini API-Key setzen:</label>
+                        <input type="password" id="admin-api-key" placeholder="AIzaSy..." autocomplete="off" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-teal-500 font-mono">
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                        <div class="space-y-1">
+                            <label class="block text-xs font-semibold text-slate-300">Modell:</label>
+                            <input type="text" id="admin-model" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="block text-xs font-semibold text-slate-300">Neue Admin-PIN (optional):</label>
+                            <input type="password" id="admin-pin-change" placeholder="Leer lassen = unverändert" autocomplete="new-password" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono">
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex justify-end">
+                        <button onclick="app.saveAdminConfig()" class="px-6 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition">
+                            Admin-Einstellungen speichern
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                        <div class="flex items-center gap-2">
+                            <span class="text-teal-400">🗄️</span>
+                            <h3 class="text-sm font-bold text-white">Registrierte Benutzerprofile</h3>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="border-b border-slate-800 text-slate-400">
+                                    <th class="py-2 px-3">Name</th>
+                                    <th class="py-2 px-3">Alter</th>
+                                    <th class="py-2 px-3">Zivilstand</th>
+                                    <th class="py-2 px-3">Wohnort</th>
+                                    <th class="py-2 px-3">Sitzungen</th>
+                                    <th class="py-2 px-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-user-tbody" class="divide-y divide-slate-800/60"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB: AUTH ================= -->
+        <section id="tab-auth" class="hidden max-w-md mx-auto my-auto w-full p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-6 shadow-2xl">
+            <div class="text-center space-y-2">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-400 text-slate-950 flex items-center justify-center mx-auto text-xl font-black">
+                    ☯
+                </div>
+                <h2 id="auth-heading" class="text-2xl font-bold text-white">Willkommen bei AuraMind</h2>
+                <p class="text-xs text-slate-400">
+                    Deine mentale Stabilität begleiten und Fortschritte festhalten.
+                </p>
+            </div>
+
+            <div class="flex rounded-xl bg-slate-800 p-1 text-xs">
+                <button id="auth-tab-login" onclick="app.setAuthMode('login')" class="flex-1 py-2 rounded-lg font-bold bg-teal-500 text-slate-950 transition">
+                    Anmelden
+                </button>
+                <button id="auth-tab-register" onclick="app.setAuthMode('register')" class="flex-1 py-2 rounded-lg font-bold text-slate-400 hover:text-white transition">
+                    Registrieren
+                </button>
+            </div>
+
+            <form id="auth-form-login" onsubmit="event.preventDefault(); app.handleLogin();" class="space-y-4">
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-300">E-Mail-Adresse:</label>
+                    <input type="email" id="auth-login-email" required placeholder="elena@beispiel.ch" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-teal-500">
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-300">Passwort:</label>
+                    <input type="password" id="auth-login-password" required placeholder="••••••••" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-teal-500">
+                </div>
+                <button type="submit" class="w-full py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-teal-500/20">
+                    Anmelden →
+                </button>
+            </form>
+
+            <form id="auth-form-register" onsubmit="event.preventDefault(); app.handleRegister();" class="hidden space-y-3">
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-300">Vollständiger Name:</label>
+                    <input type="text" id="auth-reg-name" required maxlength="120" placeholder="z. B. Sophie Meier" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-300">E-Mail-Adresse:</label>
+                    <input type="email" id="auth-reg-email" required placeholder="sophie@beispiel.ch" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-300">Passwort (mind. 8 Zeichen):</label>
+                    <input type="password" id="auth-reg-password" required minlength="8" placeholder="Sicheres Passwort" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-slate-300">Alter:</label>
+                        <input type="number" id="auth-reg-age" min="14" max="120" placeholder="z. B. 28" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-slate-300">Zivilstand:</label>
+                        <select id="auth-reg-civil-status" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                            <option value="Ledig">Ledig</option>
+                            <option value="In Partnerschaft / Beziehung">In Partnerschaft</option>
+                            <option value="Verheiratet">Verheiratet</option>
+                            <option value="Eingetragene Partnerschaft">Eingetr. Partnerschaft</option>
+                            <option value="Getrennt lebend">Getrennt lebend</option>
+                            <option value="Geschieden">Geschieden</option>
+                            <option value="Verwitwet">Verwitwet</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-300">Wohnort:</label>
+                    <input type="text" id="auth-reg-location" maxlength="150" placeholder="z. B. Bern, CH" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                </div>
+                <label class="flex items-start gap-2.5 p-3 rounded-xl bg-slate-800/60 border border-slate-700 cursor-pointer">
+                    <input type="checkbox" id="auth-reg-health-consent" required class="mt-0.5 w-4 h-4 shrink-0 accent-teal-500">
+                    <span class="text-[12px] text-slate-300 leading-relaxed">Ich willige ausdrücklich ein, dass AuraMind meine Gesundheitsdaten (Stimmungs-Check-ins, Coaching-Sitzungen, Chatverläufe, Aktivitäten, Sicherheitsplan) bearbeitet, um mir die Funktionen der App bereitzustellen – und dass bei aktivem KI-Coach Chat-Inhalte an Google (Gemini API) übermittelt werden. Details in der <button type="button" onclick="app.openModal('modal-datenschutz')" class="text-teal-300 underline hover:text-teal-200">Datenschutzerklärung</button>. Ich kann diese Einwilligung jederzeit widerrufen, indem ich mein Konto lösche.</span>
+                </label>
+                <button type="submit" class="w-full py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-teal-500/20 mt-2">
+                    Registrieren & Starten →
+                </button>
+            </form>
+        </section>
+
+    </main>
+
+    <!-- ================= FOOTER ================= -->
+    <footer class="border-t border-slate-800 bg-slate-900/60 px-4 py-4 sm:px-6">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
+            <span>© <span id="footer-year">2026</span> AuraMind · <a href="/" class="hover:text-teal-300 transition">Über AuraMind</a></span>
+            <nav class="flex items-center gap-4">
+                <button onclick="app.openModal('modal-impressum')" class="hover:text-teal-300 transition">Impressum</button>
+                <button onclick="app.openModal('modal-datenschutz')" class="hover:text-teal-300 transition">Datenschutz</button>
+                <button onclick="app.openModal('modal-kontakt')" class="hover:text-teal-300 transition">Kontakt</button>
+                <button onclick="consent.openSettings()" class="hover:text-teal-300 transition">Cookie-Einstellungen</button>
+                <button onclick="app.switchTab('admin')" class="hover:text-teal-300 transition" title="Admin Backend">Admin</button>
+            </nav>
+        </div>
+    </footer>
+
+    <!-- ================= MODAL: IMPRESSUM ================= -->
+    <div id="modal-impressum" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800 shrink-0">
+                <div class="flex items-center space-x-2 text-teal-400">
+                    <span>📄</span>
+                    <h3 class="text-base font-bold text-white">Impressum</h3>
+                </div>
+                <button onclick="app.closeModal('modal-impressum')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <div class="space-y-3 text-xs overflow-y-auto pr-1 pt-3">
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300">Verantwortlich für den Inhalt</div>
+                    <div class="text-slate-300 leading-relaxed space-y-1">
+                        <p>Daniel P. Schmidt<br>Bruggmoosstrasse 32<br>5454 Bellikon<br>Schweiz</p>
+                        <p>E-Mail: <a href="mailto:me+auramind@dpschmidt.ch" class="text-teal-300 underline hover:text-teal-200">me+auramind@dpschmidt.ch</a><br>
+                        oder über das <button type="button" onclick="app.closeModal('modal-impressum'); app.openModal('modal-kontakt');" class="text-teal-300 underline hover:text-teal-200">Kontaktformular</button></p>
+                    </div>
+                </div>
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300">Kein Ersatz für Therapie</div>
+                    <div class="text-slate-300 leading-relaxed space-y-1">
+                        <p>AuraMind ist ein Selbsthilfe-Werkzeug und ersetzt keine ärztliche oder psychotherapeutische Behandlung. In akuten Krisen wende dich an die Dargebotene Hand (Tel. 143), den Notruf (144) oder deine behandelnde Fachperson.</p>
+                    </div>
+                </div>
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300">Haftungsausschluss</div>
+                    <div class="text-slate-300 leading-relaxed space-y-1">
+                        <p>Die Inhalte wurden mit Sorgfalt erstellt. Für Richtigkeit, Vollständigkeit und Aktualität – insbesondere der KI-generierten Antworten – wird keine Gewähr übernommen. Für Inhalte externer Links sind ausschliesslich deren Betreiber verantwortlich.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: DATENSCHUTZERKLÄRUNG ================= -->
+    <div id="modal-datenschutz" class="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800 shrink-0">
+                <div class="flex items-center space-x-2 text-teal-400">
+                    <span>🔐</span>
+                    <h3 class="text-base font-bold text-white">Datenschutzerklärung</h3>
+                </div>
+                <button onclick="app.closeModal('modal-datenschutz')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <div class="space-y-3 text-xs overflow-y-auto pr-1 pt-3">
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300">1. Verantwortliche Stelle</div>
+                    <div class="text-slate-300 leading-relaxed space-y-1">
+                        <p>Daniel P. Schmidt, Bruggmoosstrasse 32, 5454 Bellikon, Schweiz<br>E-Mail: <a href="mailto:me+auramind@dpschmidt.ch" class="text-teal-300 underline hover:text-teal-200">me+auramind@dpschmidt.ch</a></p>
+                        <p>Diese Erklärung richtet sich nach dem Schweizer Datenschutzgesetz (DSG) und – für Personen in der EU/im EWR – nach der Datenschutz-Grundverordnung (DSGVO). Begriffe wie «bearbeiten» umfassen jeden Umgang mit Personendaten.</p>
+                    </div>
+                </div>
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300">2. Welche Daten wir wofür bearbeiten</div>
+                    <div class="text-slate-300 leading-relaxed space-y-1">
+                        <p><strong>Konto:</strong> Name, E-Mail, Passwort (nur als sicherer Hash), freiwillig Alter, Zivilstand, Wohnort, Notfallkontakt und persönliche Notizen. Zweck: Bereitstellung deines Kontos und der App. Rechtsgrundlage: Vertrag bzw. Nutzungsverhältnis (Art. 6 Abs. 1 lit. b DSGVO).</p>
+                        <p><strong>Gesundheitsdaten:</strong> Stimmungs-Check-ins, Aktivitäten, Coaching-Sitzungen, Chatverläufe und dein Sicherheitsplan. Das sind besonders schützenswerte Personendaten (Art. 5 lit. c DSG, Art. 9 DSGVO). Wir bearbeiten sie ausschliesslich, um dir die Funktionen der App bereitzustellen, und nur mit deiner ausdrücklichen Einwilligung (Art. 9 Abs. 2 lit. a DSGVO, Art. 6 Abs. 7 DSG), die du bei der Registrierung per Häkchen erteilst. Wir speichern den Zeitpunkt deiner Einwilligung als Nachweis. Du kannst sie jederzeit widerrufen, indem du dein Konto löschst (Abschnitt 10).</p>
+                        <p><strong>Kontaktformular:</strong> Name, E-Mail und Nachricht – und, falls du angemeldet bist, die Zuordnung zu deinem Konto –, um deine Anfrage zu beantworten. Die Anfrage wird in der Datenbank gespeichert und kann zusätzlich per E-Mail an uns weitergeleitet werden. Rechtsgrundlage: berechtigtes Interesse an der Beantwortung (Art. 6 Abs. 1 lit. f DSGVO).</p>
+                        <p><strong>Technische Daten:</strong> Beim Aufruf der App verarbeitet der Webserver technisch bedingt deine IP-Adresse, Datum/Uhrzeit, aufgerufene Adresse und Browserinformationen (Server-Logfiles), um die App sicher und stabil auszuliefern. Rechtsgrundlage: berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO).</p>
+                        <p>Wir verkaufen keine Daten, schalten keine Werbung und erstellen keine Profile zu Werbezwecken.</p>
+                    </div>
+                </div>
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300">3. Hosting</div>
+                    <div class="text-slate-300 leading-relaxed space-y-1">
+                        <p>App, Schnittstelle (API) und Datenbank laufen bei der cyon AG, Basel, Schweiz. cyon bearbeitet die Daten ausschliesslich in unserem Auftrag und in Rechenzentren in der Schweiz. Schriften und alle anderen Ressourcen der App werden direkt von diesem Server ausgeliefert – es werden keine externen Schriftdienste wie Google Fonts eingebunden.</p>
+                    </div>
+                </div>
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300">4. KI-Coach (Google Gemini)</div>
+                    <div class="text-slate-300 leading-relaxed space-y-1">
+                        <p>Ist der KI-Coach aktiv, werden deine letzten sechs Chat-Nachrichten serverseitig an die Gemini API von Google übermittelt, um eine Antwort zu erzeugen. Damit die Antwort zu dir passt, gehen zusätzlich mit: Alter, Wohnort, die erkannte Stimmungstendenz der Sitzung, dein gewähltes Ziel und die von dir hinterlegten persönlichen Trigger/Frühwarnzeichen.</p>
+                        <p><strong>Nicht übermittelt</strong> werden dein Name, deine E-Mail-Adresse, dein Zivilstand und dein Notfallkontakt. Deine IP-Adresse wird nicht weitergegeben, da die Anfrage von unserem Server ausgeht. Bitte schreib im Chat möglichst keine Namen oder andere identifizierende Angaben – alles, was du im Chat eingibst, geht an Google.</p>
+                        <p>Empfänger ist Google (Google Ireland Ltd. bzw. Google LLC, USA); die Daten können in den USA oder anderen Ländern bearbeitet werden. Wir nutzen die kostenpflichtige Version der Gemini API: Google verwendet die Eingaben und Antworten gemäss seinen Bedingungen für kostenpflichtige Dienste <strong>nicht</strong> zum Training oder zur Verbesserung seiner Modelle und speichert sie nur befristet zur Missbrauchserkennung. Rechtsgrundlage ist deine ausdrückliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO, Art. 6 Abs. 7 DSG), die du bei der Registrierung erteilst. Ohne KI antwortet ein lokaler Coach auf unserem Server, der keine Daten weitergibt.</p>
+                    </div>
+                </div>
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300">5. Cookies & Speicherung im Browser</div>
+                    <div class="text-slate-300 leading-relaxed space-y-1">
+                        <p><strong>Technisch notwendig</strong> (ohne Einwilligung, Art. 6 Abs. 1 lit. b/f DSGVO, § 25 Abs. 2 TDDDG):</p>
+                        <p>• <code>auramind_sid</code> – Session-Cookie für die Anmeldung, wird beim Schliessen des Browsers gelöscht.<br>• <code>auramind_theme</code> – deine Wahl Hell/Dunkel (lokaler Browser-Speicher).<br>• <code>auramind_consent</code> – deine Cookie-Auswahl, 12 Monate (lokaler Browser-Speicher).<br>• <code>auramind_active_session</code> – Kennung deiner laufenden Coaching-Sitzung, damit du nach einem Neuladen weitermachen kannst (lokaler Browser-Speicher, keine Inhalte).</p>
+                        <p><strong>Nur mit Einwilligung:</strong> Cookies von Google Analytics (siehe Abschnitt 6).</p>
+                    </div>
+                </div>
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300">6. Webanalyse mit Google Analytics (nur mit Einwilligung)</div>
+                    <div class="text-slate-300 leading-relaxed space-y-1">
+                        <p>Nur wenn du im Cookie-Banner «Statistik erlauben» wählst, laden wir Google Analytics 4 der Google Ireland Ltd., Gordon House, Barrow Street, Dublin 4, Irland (Mutterkonzern: Google LLC, USA). Ohne Einwilligung wird das Skript gar nicht geladen und es werden keine Analytics-Cookies gesetzt.</p>
+                        <p><strong>Zweck:</strong> statistische Auswertung der Nutzung, um die App zu verbessern. <strong>Daten:</strong> IP-Adresse (wird von Google nach eigenen Angaben nicht gespeichert), Geräte- und Browserinformationen, ungefährer Standort (Land/Region), aufgerufene Seiten, Verweildauer und Interaktionen. <strong>Nicht</strong> übermittelt werden deine Kontodaten, Check-ins, Chat-Inhalte oder andere Gesundheitsdaten. Google Signals und Werbe-Personalisierung sind deaktiviert.</p>
+                        <p><strong>Cookies:</strong> <code>_ga</code> und <code>_ga_*</code>, Speicherdauer bis zu 2 Jahre. <strong>Rechtsgrundlage:</strong> deine Einwilligung (Art. 6 Abs. 1 lit. a DSGVO, § 25 Abs. 1 TDDDG; in der Schweiz Art. 45c FMG und Art. 6 DSG).</p>
+                        <p><strong>Widerruf:</strong> jederzeit mit Wirkung für die Zukunft über <button type="button" onclick="app.closeModal('modal-datenschutz'); consent.openSettings();" class="text-teal-300 underline hover:text-teal-200">Cookie-Einstellungen</button> (auch im Footer). Deine Auswahl gilt 12 Monate, danach fragen wir erneut.</p>
+                    </div>
+                </div>
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300">7. Übermittlung ins Ausland</div>
+                    <div class="text-slate-300 leading-relaxed space-y-1">
+                        <p>Deine Daten werden grundsätzlich in der Schweiz gespeichert. Eine Übermittlung ins Ausland erfolgt nur an Google im Rahmen des KI-Coachs (Abschnitt 4) und – mit Einwilligung – von Google Analytics (Abschnitt 6). Google LLC ist unter dem EU-US Data Privacy Framework und dem Swiss-US Data Privacy Framework zertifiziert; ergänzend gelten die Standardvertragsklauseln der EU-Kommission, die auch vom EDÖB anerkannt sind. Die Schweiz verfügt aus Sicht der EU über ein angemessenes Datenschutzniveau.</p>
+                    </div>
+                </div>
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300">8. Datensicherheit</div>
+                    <div class="text-slate-300 leading-relaxed space-y-1">
+                        <p>Die Übertragung erfolgt verschlüsselt (HTTPS). Passwörter speichern wir nur als sicheren Hash, Formulare sind gegen Cross-Site-Request-Forgery geschützt und Anmeldeversuche sind begrenzt. Zugriff auf die Datenbank haben nur wir und unser Hosting-Anbieter im Rahmen der Auftragsbearbeitung.</p>
+                    </div>
+                </div>
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300">9. Speicherdauer</div>
+                    <div class="text-slate-300 leading-relaxed space-y-1">
+                        <p>Konto- und Gesundheitsdaten speichern wir, solange dein Konto besteht. Bei einer Löschung werden dein Konto und alle zugehörigen Daten (Sitzungen, Chatverläufe, Check-ins, Aktivitäten, Sicherheitsplan, Kontaktanfragen) sofort und endgültig aus der Datenbank entfernt. Kontaktanfragen ohne Konto löschen wir, sobald sie erledigt sind und keine Aufbewahrungspflicht besteht. Server-Logfiles werden vom Hosting-Anbieter nach kurzer Zeit automatisch gelöscht.</p>
+                    </div>
+                </div>
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300">10. Deine Rechte</div>
+                    <div class="text-slate-300 leading-relaxed space-y-1">
+                        <p>Du kannst jederzeit Auskunft über deine Daten, deren Berichtigung, Löschung oder Herausgabe in einem gängigen Format (Datenübertragbarkeit) verlangen, der Bearbeitung widersprechen oder ihre Einschränkung verlangen. Erteilte Einwilligungen kannst du jederzeit mit Wirkung für die Zukunft widerrufen – die bis dahin erfolgte Bearbeitung bleibt rechtmässig.</p>
+                        <p>Am einfachsten über das <button type="button" onclick="app.closeModal('modal-datenschutz'); app.openModal('modal-kontakt');" class="text-teal-300 underline hover:text-teal-200">Kontaktformular</button> oder per E-Mail an <a href="mailto:me+auramind@dpschmidt.ch" class="text-teal-300 underline hover:text-teal-200">me+auramind@dpschmidt.ch</a>. Dein Konto samt allen Daten kannst du jederzeit selbst löschen – unter <strong>Profil → Konto löschen</strong>. Damit widerrufst du zugleich deine Einwilligung zur Bearbeitung deiner Gesundheitsdaten.</p>
+                        <p>Du hast zudem das Recht, dich beim Eidgenössischen Datenschutz- und Öffentlichkeitsbeauftragten (EDÖB) bzw. – als Person in der EU – bei der Datenschutz-Aufsichtsbehörde deines Landes zu beschweren.</p>
+                    </div>
+                </div>
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300">11. Keine automatisierten Entscheidungen</div>
+                    <div class="text-slate-300 leading-relaxed space-y-1">
+                        <p>Die App schätzt aus deinen Angaben eine Stimmungstendenz ein, um passende Übungen und Antworten vorzuschlagen. Daraus folgen keine Entscheidungen mit rechtlicher Wirkung oder ähnlich erheblicher Beeinträchtigung für dich (Art. 21 DSG, Art. 22 DSGVO).</p>
+                    </div>
+                </div>
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300">12. Änderungen</div>
+                    <div class="text-slate-300 leading-relaxed space-y-1">
+                        <p>Wir passen diese Erklärung an, wenn sich die App oder die Rechtslage ändert. Es gilt die jeweils hier veröffentlichte Fassung.</p>
+                        <p><em>Stand: Oktober 2026</em></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: KONTAKT ================= -->
+    <div id="modal-kontakt" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800 shrink-0">
+                <div class="flex items-center space-x-2 text-teal-400">
+                    <span>✉️</span>
+                    <h3 class="text-base font-bold text-white">Kontakt</h3>
+                </div>
+                <button onclick="app.closeModal('modal-kontakt')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <form id="contact-form" onsubmit="event.preventDefault(); app.submitContact();" class="space-y-3 pt-3 overflow-y-auto pr-1">
+                <p class="text-xs text-slate-400">Fragen, Feedback oder ein Anliegen zu deinen Daten? Schreib uns – wir melden uns per E-Mail.</p>
+                <div class="space-y-1">
+                    <label for="contact-name" class="block text-xs font-bold text-slate-300">Name:</label>
+                    <input type="text" id="contact-name" maxlength="120" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                </div>
+                <div class="space-y-1">
+                    <label for="contact-email" class="block text-xs font-bold text-slate-300">E-Mail:</label>
+                    <input type="email" id="contact-email" maxlength="190" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                </div>
+                <div class="space-y-1">
+                    <label for="contact-message" class="block text-xs font-bold text-slate-300">Nachricht:</label>
+                    <textarea id="contact-message" rows="5" maxlength="4000" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500 resize-y"></textarea>
+                </div>
+                <!-- Honeypot gegen Spam-Bots: für Menschen unsichtbar -->
+                <div class="hidden" aria-hidden="true">
+                    <input type="text" id="contact-website" tabindex="-1" autocomplete="off">
+                </div>
+                <p class="text-[12px] text-slate-500">Bitte keine Notfälle über dieses Formular – in Krisen: Tel. 143 oder 144.</p>
+                <button type="submit" id="contact-submit" class="w-full py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition disabled:opacity-60">
+                    Nachricht senden
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: 4-7-8 BREATHING ================= -->
+    <div id="modal-breathing" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="w-full max-w-sm rounded-3xl bg-slate-900 border border-teal-900/60 p-6 flex flex-col items-center text-center space-y-6 shadow-2xl">
+            <div class="w-full flex justify-between items-center pb-2 border-b border-slate-800">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <span>🫁</span>
+                    <span>4-7-8 Atemregulation</span>
+                </h3>
+                <button onclick="app.closeModal('modal-breathing')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <p class="text-xs text-slate-300">
+                Aktiviert den Parasympathikus, senkt die Herzfrequenz und dämpft akute Übererregung.
+            </p>
+
+            <div class="relative w-48 h-48 flex items-center justify-center">
+                <div id="breathing-circle" class="breathe-anim w-28 h-28 rounded-full border-2 border-teal-500/40 bg-teal-500/10 flex items-center justify-center shadow-lg">
+                    <span id="breathing-counter" class="text-2xl font-black text-white">4</span>
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <div id="breathing-phase-label" class="text-base font-bold text-teal-300">Einatmen (durch die Nase)</div>
+                <div id="breathing-phase-sub" class="text-[13px] text-slate-400">Tief in den Bauchraum atmen (4s)</div>
+            </div>
+
+            <button id="breathing-toggle-btn" onclick="app.toggleBreathingExercise()" class="w-full py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-teal-500/20">
+                Übung starten
+            </button>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: SKILLS ================= -->
+    <div id="modal-tools" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800 shrink-0">
+                <div class="flex items-center space-x-2 text-teal-400">
+                    <span>🧰</span>
+                    <h3 class="text-base font-bold text-white">Notfallkoffer & Reiz-Notbremsen</h3>
+                </div>
+                <button onclick="app.closeModal('modal-tools')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <div class="space-y-3 text-xs overflow-y-auto pr-1">
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300 flex items-center gap-1.5">
+                        <span>🧊</span> DBT-Tauchreflex (Kälte-Reiz)
+                    </div>
+                    <p class="text-slate-300 leading-relaxed">
+                        Halte deine Handgelenke oder ein nasses Tuch mit Eiswasser für 20–30 Sekunden an Schläfen und Stirn. Der Säugetier-Tauchreflex verlangsamt reflexartig den Puls und unterbricht quälendes Gedankenrasen.
+                    </p>
+                </div>
+
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300 flex items-center gap-1.5">
+                        <span>🖐️</span> 5-4-3-2-1 Sinne-Erdung
+                    </div>
+                    <p class="text-slate-300 leading-relaxed">
+                        Benenne laut: <strong>5</strong> Dinge, die du siehst • <strong>4</strong> Dinge, die du berührst • <strong>3</strong> Geräusche • <strong>2</strong> Gerüche • <strong>1</strong> Geschmack. Bringt den Geist sofort ins Hier und Jetzt.
+                    </p>
+                </div>
+
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-amber-300 flex items-center gap-1.5">
+                        <span>🔒</span> 48-Stunden-Kaufregel
+                    </div>
+                    <p class="text-slate-300 leading-relaxed">
+                        Bei manischem Kaufdrang: Schreibe den Artikel auf einen Zettel, schließe alle Browser-Tabs und stelle dir einen Wecker auf genau 48 Stunden. Du verbietest es dir nicht – du prüfst es nur mit klarem Kopf.
+                    </p>
+                </div>
+
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300 flex items-center gap-1.5">
+                        <span>🌡️</span> TIPP-Skill (DBT Distress-Toleranz)
+                    </div>
+                    <p class="text-slate-300 leading-relaxed">
+                        Bei extremer Übererregung, die keine der anderen Skills durchbricht: <strong>T</strong>emperatur (Gesicht in eiskaltes Wasser tauchen), <strong>I</strong>ntensive Bewegung (1 Minute auf der Stelle sprinten/Hampelmänner), <strong>P</strong>aced Breathing (Ausatmen länger als Einatmen), <strong>P</strong>aired Muscle Relaxation (Muskeln 5s anspannen, dann loslassen). Wirkt über das vegetative Nervensystem innerhalb von Minuten.
+                    </p>
+                </div>
+
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300 flex items-center gap-1.5">
+                        <span>🗣️</span> DEAR MAN (zwischenmenschliche Konflikte)
+                    </div>
+                    <p class="text-slate-300 leading-relaxed">
+                        Bei Reizbarkeit/Konflikt statt Impuls-Reaktion: <strong>D</strong>escribe (Situation sachlich schildern), <strong>E</strong>xpress (eigenes Gefühl benennen), <strong>A</strong>ssert (klar sagen, was du brauchst), <strong>R</strong>einforce (Vorteil für die andere Person nennen), <strong>M</strong>indful (beim Thema bleiben), <strong>A</strong>ppear confident (ruhiger Ton/Haltung), <strong>N</strong>egotiate (kompromissbereit bleiben).
+                    </p>
+                </div>
+            </div>
+
+            <div class="pt-2 shrink-0">
+                <button onclick="app.closeModal('modal-tools')" class="w-full py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:text-white transition">
+                    Schließen
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: SICHERHEITSPLAN ================= -->
+    <div id="modal-safety-plan" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="w-full max-w-lg rounded-2xl bg-slate-900 border border-teal-900/60 p-6 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800 shrink-0">
+                <div class="flex items-center space-x-2 text-teal-400">
+                    <span>🛡️</span>
+                    <h3 class="text-base font-bold text-white">Mein persönlicher Sicherheitsplan</h3>
+                </div>
+                <button onclick="app.closeModal('modal-safety-plan')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <p class="text-xs text-slate-400 pt-2 shrink-0">
+                Fülle diesen Plan am besten aus, wenn es dir gerade gut geht – im Ernstfall ist er dann sofort griffbereit.
+                Basiert auf dem klinisch etablierten Stanley-Brown-Modell (Safety Planning Intervention).
+            </p>
+
+            <form id="safety-plan-form" onsubmit="event.preventDefault(); app.saveSafetyPlan();" class="space-y-3 py-3 overflow-y-auto pr-1">
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-200">1. Meine persönlichen Warnzeichen</label>
+                    <textarea id="sp-warning-signs" rows="2" maxlength="2000" placeholder="z. B. weniger als 4h Schlaf, Gedankenrasen, Kaufdrang..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-teal-500"></textarea>
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-200">2. Was mir alleine hilft (ohne fremde Hilfe)</label>
+                    <textarea id="sp-internal-coping" rows="2" maxlength="2000" placeholder="z. B. Atemübung, kaltes Wasser, spazieren gehen..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-teal-500"></textarea>
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-200">3. Orte/Menschen zur Ablenkung</label>
+                    <textarea id="sp-social-distractions" rows="2" maxlength="2000" placeholder="z. B. Café um die Ecke, Nachbarin ansprechen..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-teal-500"></textarea>
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-200">4. Menschen, die ich um Hilfe bitten kann</label>
+                    <textarea id="sp-people-to-ask" rows="2" maxlength="2000" placeholder="Name & Telefonnummer" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-teal-500"></textarea>
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-200">5. Fachpersonen & Notfallstellen</label>
+                    <textarea id="sp-professional-contacts" rows="2" maxlength="2000" placeholder="Therapeutin, Psychiater, Klinik, 143/144..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-teal-500"></textarea>
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-rose-300">6. Meine Umgebung sicherer machen</label>
+                    <textarea id="sp-safe-environment" rows="2" maxlength="2000" placeholder="Was kann ich vorübergehend weggeben/wegschließen lassen?" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-teal-500"></textarea>
+                </div>
+            </form>
+
+            <div class="pt-2 shrink-0">
+                <button onclick="app.saveSafetyPlan()" class="w-full py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition">
+                    Sicherheitsplan speichern
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: SOS ================= -->
+    <div id="modal-sos" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-2xl bg-slate-900 border border-rose-900/80 p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div class="flex items-center space-x-2 text-rose-400">
+                    <span>🚨</span>
+                    <h3 class="text-base font-bold text-white">Akute Hilfe & Notfallstellen</h3>
+                </div>
+                <button onclick="app.closeModal('modal-sos')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <p class="text-xs text-slate-300 leading-relaxed">
+                Wenn du dich in einer schweren Krise befindest oder dich selbst nicht mehr sicher kontrollieren kannst: Wende dich unverzüglich an diese kostenlosen Stellen:
+            </p>
+
+            <div class="space-y-2 text-xs">
+                <a href="tel:112" class="flex items-center justify-between p-3 rounded-xl bg-rose-950/70 border border-rose-800 text-rose-200 hover:bg-rose-900 transition font-bold">
+                    <div>
+                        <span class="text-sm block">112 / 144 – Notruf & Rettungsdienst</span>
+                        <span class="text-[13px] font-normal text-rose-300">Bei akuter Eigen- oder Fremdgefährdung</span>
+                    </div>
+                    <span>Anrufen 📞</span>
+                </a>
+
+                <a href="tel:143" class="flex items-center justify-between p-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-750 transition">
+                    <div>
+                        <strong class="text-sm block text-white">143 (CH) – Die Dargebotene Hand</strong>
+                        <span class="text-[13px] text-slate-400">24/7 anonyme Krisenhilfe für die Schweiz</span>
+                    </div>
+                    <span class="text-teal-400 font-bold">Anrufen 📞</span>
+                </a>
+
+                <a href="tel:08001110111" class="flex items-center justify-between p-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-750 transition">
+                    <div>
+                        <strong class="text-sm block text-white">0800 111 0 111 (DE) – TelefonSeelsorge</strong>
+                        <span class="text-[13px] text-slate-400">Kostenfrei und 24/7 erreichbar</span>
+                    </div>
+                    <span class="text-teal-400 font-bold">Anrufen 📞</span>
+                </a>
+
+                <div id="sos-personal-contact-box" class="p-3 rounded-xl bg-slate-800/80 border border-teal-800/60 text-teal-300 hidden">
+                    <div class="font-bold text-[13px] text-teal-400">Dein hinterlegter Notfallkontakt:</div>
+                    <div id="sos-personal-contact-val" class="text-xs text-white mt-0.5">-</div>
+                </div>
+            </div>
+
+            <div class="pt-2 space-y-2">
+                <button onclick="app.closeModal('modal-sos'); app.openSafetyPlan();" class="w-full py-2.5 rounded-xl bg-teal-950/60 border border-teal-800 text-teal-300 text-xs font-bold hover:bg-teal-900 transition">
+                    🛡️ Meinen Sicherheitsplan ansehen
+                </button>
+                <button onclick="app.closeModal('modal-sos')" class="w-full py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:text-white transition">
+                    Zurück zur App
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: EINWILLIGUNG GESUNDHEITSDATEN (Bestandskonten) ================= -->
+    <div id="modal-health-consent" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center space-x-2 pb-2 border-b border-slate-800 shrink-0 text-teal-400">
+                <span>🔐</span>
+                <h3 class="text-base font-bold text-white">Deine Einwilligung</h3>
+            </div>
+            <form onsubmit="event.preventDefault(); app.submitHealthConsent();" class="space-y-3 pt-3 overflow-y-auto pr-1">
+                <p class="text-xs text-slate-400 leading-relaxed">Damit du AuraMind weiter nutzen kannst, brauchen wir deine ausdrückliche Einwilligung zur Bearbeitung deiner Gesundheitsdaten.</p>
+                <label class="flex items-start gap-2.5 p-3 rounded-xl bg-slate-800/60 border border-slate-700 cursor-pointer">
+                    <input type="checkbox" id="health-consent-checkbox" required class="mt-0.5 w-4 h-4 shrink-0 accent-teal-500">
+                    <span class="text-[12px] text-slate-300 leading-relaxed">Ich willige ausdrücklich ein, dass AuraMind meine Gesundheitsdaten (Stimmungs-Check-ins, Coaching-Sitzungen, Chatverläufe, Aktivitäten, Sicherheitsplan) bearbeitet, um mir die Funktionen der App bereitzustellen – und dass bei aktivem KI-Coach Chat-Inhalte an Google (Gemini API) übermittelt werden. Details in der <button type="button" onclick="app.openModal('modal-datenschutz')" class="text-teal-300 underline hover:text-teal-200">Datenschutzerklärung</button>. Ich kann diese Einwilligung jederzeit widerrufen, indem ich mein Konto lösche.</span>
+                </label>
+                <div class="flex flex-col sm:flex-row gap-2 sm:justify-between pt-1">
+                    <div class="flex gap-2">
+                        <button type="button" onclick="app.declineHealthConsent()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs font-bold transition">Abmelden</button>
+                        <button type="button" onclick="app.closeModal('modal-health-consent'); app.openDeleteAccount();" class="px-4 py-2 rounded-xl text-rose-300 hover:text-rose-200 text-xs font-bold transition">Konto löschen</button>
+                    </div>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-bold transition">Einwilligen & weiter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: KONTO LÖSCHEN ================= -->
+    <div id="modal-delete-account" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-2xl bg-slate-900 border border-rose-900 p-6 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800 shrink-0">
+                <div class="flex items-center space-x-2 text-rose-400">
+                    <span>🗑️</span>
+                    <h3 class="text-base font-bold text-white">Konto endgültig löschen</h3>
+                </div>
+                <button onclick="app.closeDeleteAccount()" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <form onsubmit="event.preventDefault(); app.submitDeleteAccount();" class="space-y-3 pt-3 overflow-y-auto pr-1">
+                <p class="text-xs text-slate-300 leading-relaxed">Alle deine Daten werden sofort und unwiderruflich gelöscht. Bitte bestätige mit deinem Passwort.</p>
+                <div class="space-y-1">
+                    <label for="delete-account-password" class="block text-xs font-bold text-slate-300">Passwort:</label>
+                    <input type="password" id="delete-account-password" required autocomplete="current-password" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500">
+                </div>
+                <div class="flex justify-end gap-2 pt-1">
+                    <button type="button" onclick="app.closeDeleteAccount()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs font-bold transition">Abbrechen</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition">Endgültig löschen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= COOKIE-BANNER ================= -->
+    <div id="cookie-banner" role="dialog" aria-labelledby="cookie-banner-title" aria-describedby="cookie-banner-text" class="fixed inset-x-0 bottom-0 z-40 hidden justify-center p-4 pointer-events-none">
+        <div class="pointer-events-auto w-full max-w-2xl rounded-2xl bg-slate-900 border border-slate-700 p-5 shadow-2xl space-y-3">
+            <div class="flex items-center gap-2 text-teal-400">
+                <span>🍪</span>
+                <h3 id="cookie-banner-title" class="text-sm font-bold text-white">Darf AuraMind anonyme Nutzungsstatistiken erheben?</h3>
+            </div>
+            <p id="cookie-banner-text" class="text-xs text-slate-300 leading-relaxed">
+                Mit deiner Zustimmung nutzen wir <strong>Google Analytics</strong>, um zu verstehen, wie die App genutzt wird. Dabei werden Cookies gesetzt und Nutzungsdaten (u.&nbsp;a. IP-Adresse, Geräte- und Browserinfos, aufgerufene Seiten) an Google übermittelt, auch in die USA. Deine Gesundheitsdaten und Chat-Inhalte werden <strong>nicht</strong> an Google Analytics gesendet.
+                Die Einwilligung ist freiwillig und jederzeit über «Cookie-Einstellungen» im Footer widerrufbar. Technisch notwendige Speicherungen (Anmelde-Session, Hell/Dunkel, diese Auswahl) sind immer aktiv.
+                <button type="button" onclick="app.openModal('modal-datenschutz')" class="text-teal-300 underline hover:text-teal-200">Mehr in der Datenschutzerklärung</button>
+            </p>
+            <div class="flex flex-col sm:flex-row gap-2 sm:justify-end">
+                <button type="button" onclick="consent.reject()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 text-xs font-bold transition">Nur notwendige</button>
+                <button type="button" onclick="consent.accept()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 text-xs font-bold transition">Statistik erlauben</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Box -->
+    <div id="toast-el" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 px-4 py-3 rounded-xl bg-slate-900 border border-teal-500 text-teal-300 text-xs shadow-2xl flex items-center gap-2 pointer-events-none">
+        <span>✓</span>
+        <span id="toast-text">Hinweis</span>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>

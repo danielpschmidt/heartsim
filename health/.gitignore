@@ -1,0 +1,11 @@
+# Backend
+backend/config.php
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# Versehentliche Kopie der Zugangsdaten
+backend/api/config.php

@@ -1,0 +1,1744 @@
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraMind – Mental Balance Coach</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#151f32',
+                            950: '#070b14'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Font Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(71, 85, 105, 0.5);
+            border-radius: 9999px;
+        }
+        .breathe-anim {
+            transition: transform 4s cubic-bezier(0.4, 0, 0.2, 1), background-color 2s ease, border-color 2s ease;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-teal-500 selection:text-slate-950">
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 sm:px-6">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer select-none" onclick="app.switchTab('coach')">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-500 via-teal-400 to-emerald-400 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-teal-500/20">
+                    ☯
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-base font-bold text-white tracking-tight">AuraMind</h1>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-teal-950 text-teal-300 border border-teal-800 font-semibold">
+                            Balance Coach
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 hidden sm:block">Akut-Begleitung bei Übererregung, Erschöpfung & Mischzuständen</p>
+                </div>
+            </div>
+
+            <!-- Top Actions & Navigation Tabs -->
+            <div class="flex items-center space-x-1 sm:space-x-2">
+                <button onclick="app.openModal('modal-sos')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold transition shadow-md shadow-rose-950/40">
+                    <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                    <span>SOS</span>
+                </button>
+
+                <button onclick="app.openModal('modal-tools')" class="px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-teal-400 text-xs transition" title="Notfall-Skills & Übungen">
+                    🧰
+                </button>
+
+                <nav class="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 text-xs">
+                    <button id="nav-coach" onclick="app.switchTab('coach')" class="px-3 py-1.5 rounded-lg transition font-medium text-slate-300 hover:text-white flex items-center gap-1.5">
+                        <span>🧭</span>
+                        <span class="hidden md:inline">Coach</span>
+                    </button>
+                    <button id="nav-history" onclick="app.switchTab('history')" class="px-3 py-1.5 rounded-lg transition font-medium text-slate-300 hover:text-white flex items-center gap-1.5">
+                        <span>📋</span>
+                        <span class="hidden md:inline">Verlauf</span>
+                        <span id="history-badge" class="ml-0.5 px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] text-teal-300 border border-slate-700 hidden">0</span>
+                    </button>
+                    <button id="nav-profile" onclick="app.switchTab('profile')" class="px-3 py-1.5 rounded-lg transition font-medium text-slate-300 hover:text-white flex items-center gap-1.5">
+                        <span>👤</span>
+                        <span class="hidden md:inline">Profil</span>
+                    </button>
+                    <button id="nav-admin" onclick="app.switchTab('admin')" class="px-3 py-1.5 rounded-lg transition font-medium text-slate-300 hover:text-white flex items-center gap-1.5" title="Admin Backend">
+                        <span class="text-amber-400">🔒</span>
+                        <span class="hidden md:inline">Admin</span>
+                    </button>
+                </nav>
+
+                <button id="user-action-btn" onclick="app.handleUserHeaderAction()" class="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-400 hover:text-rose-400 transition" title="Konto">
+                    🚪
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 w-full max-w-5xl mx-auto p-4 sm:p-6 flex flex-col">
+
+        <!-- ================= TAB: COACH ================= -->
+        <section id="tab-coach" class="flex-1 flex flex-col">
+            
+            <!-- SUBSTEP 1: Assessment Form -->
+            <div id="coach-step-assessment" class="max-w-2xl mx-auto my-auto w-full space-y-6 py-4">
+                <div class="text-center space-y-2">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-950/60 border border-teal-800 text-teal-300 text-xs font-medium">
+                        <span>✨</span>
+                        <span>Verhaltensbasierter Check-in (keine Vorkenntnisse nötig)</span>
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                        Wie geht es dir in den letzten 24 bis 48 Stunden?
+                    </h2>
+                    <p class="text-xs sm:text-sm text-slate-400 max-w-lg mx-auto">
+                        Du musst dich nicht selbst diagnostizieren. Beantworte einfach deine realen Alltagssignale – das System ermittelt dein Profil automatisch.
+                    </p>
+                </div>
+
+                <form id="assessment-form" onsubmit="event.preventDefault(); app.submitAssessment();" class="space-y-4">
+                    <!-- Frage 1: Energie & Schlaf -->
+                    <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+                        <label class="block text-xs sm:text-sm font-bold text-slate-200">
+                            1. Wie verhalten sich dein Energielevel und dein Schlafbedürfnis?
+                        </label>
+                        <div class="space-y-2 text-xs">
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="energySleep" value="high_mania" required class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">⚡ Kaum Schlaf nötig, voller Tatendrang</span>
+                                    <span class="text-[11px] text-slate-400">Ich schlafe nur 2–4 Stunden, fühle mich elektrisiert, hellwach oder rastlos.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="energySleep" value="low_dep" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🌧️ Bleierne Schwere & Erschöpfung</span>
+                                    <span class="text-[11px] text-slate-400">Jede Bewegung kostet Kraft. Ich liege viel oder wache völlig zerschlagen auf.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="energySleep" value="agitated_mixed" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🌪️ Körperlich getrieben, aber geistig erschöpft</span>
+                                    <span class="text-[11px] text-slate-400">Ich kann nicht stillsitzen, fühle mich unter Strom, empfinde aber Druck oder Verzweiflung.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="energySleep" value="balanced" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🌱 Ausgeglichener Normalbereich</span>
+                                    <span class="text-[11px] text-slate-400">Regulärer Schlaf (6–8 Std.) und stabiles Energielevel.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Frage 2: Gedanken & Sprechtempo -->
+                    <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+                        <label class="block text-xs sm:text-sm font-bold text-slate-200">
+                            2. Wie verhalten sich deine Gedanken und dein Sprechtempo?
+                        </label>
+                        <div class="space-y-2 text-xs">
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="thoughtSpeed" value="racing_mania" required class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🚀 Gedankenrasen & ständiges Überschlagen</span>
+                                    <span class="text-[11px] text-slate-400">Ideen sprudeln pausenlos, ich rede schnell und will 10 Dinge gleichzeitig tun.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="thoughtSpeed" value="foggy_dep" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🌫️ Wie durch Nebel / Leere</span>
+                                    <span class="text-[11px] text-slate-400">Denken fällt extrem schwer, Worte fehlen, Entscheidungen blockieren mich.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="thoughtSpeed" value="looping_mixed" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🔄 Rasende, quälende Grübelschleifen</span>
+                                    <span class="text-[11px] text-slate-400">Schnelle Gedanken um Ängste, Vorwürfe, Bedrohung oder Ärger.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="thoughtSpeed" value="normal" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">⚖️ Klares, normales Denktempo</span>
+                                    <span class="text-[11px] text-slate-400">Konzentration ist im gewohnten Rahmen möglich.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Frage 3: Verhalten & Impulskontrolle -->
+                    <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+                        <label class="block text-xs sm:text-sm font-bold text-slate-200">
+                            3. Welches Verhalten spiegelt deine aktuelle Verfassung am ehesten wider?
+                        </label>
+                        <div class="space-y-2 text-xs">
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="behavior" value="risk_mania" required class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🛍️ Spontane Ausgaben, Euphorie oder Übermut</span>
+                                    <span class="text-[11px] text-slate-400">Starker Drang Geld auszugeben, ungefilterte Nachrichten abzusenden oder riskante Pläne.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="behavior" value="retreat_dep" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🚪 Völliger Rückzug & Schuldgefühle</span>
+                                    <span class="text-[11px] text-slate-400">Ich antworte niemandem, ziehe mich ins Dunkle zurück und fühle mich wertlos.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="behavior" value="irritable_mixed" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">💥 Extreme Reizbarkeit & Reizüberflutung</span>
+                                    <span class="text-[11px] text-slate-400">Geräusche und Menschen nerven mich sofort; ich fahre schnell aus der Haut.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-700/70 bg-slate-800/40 hover:border-slate-600 cursor-pointer transition">
+                                <input type="radio" name="behavior" value="stable" class="mt-0.5 text-teal-500">
+                                <div>
+                                    <span class="font-bold block text-slate-100">🤝 Ausgeglichene Reaktionen</span>
+                                    <span class="text-[11px] text-slate-400">Ich kann meine Impulse gut steuern und gelassen bleiben.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Frage 4: Zusätzliche Akutsymptome -->
+                    <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+                        <label class="block text-xs sm:text-sm font-bold text-slate-200">
+                            4. Spezifische Begleitsymptome (Optional):
+                        </label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            <label class="flex items-center space-x-2.5 p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/60 cursor-pointer hover:bg-slate-800">
+                                <input type="checkbox" name="symptoms" value="shopping" class="rounded text-teal-500">
+                                <span>Starker Drang zum Online-Shopping</span>
+                            </label>
+                            <label class="flex items-center space-x-2.5 p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/60 cursor-pointer hover:bg-slate-800">
+                                <input type="checkbox" name="symptoms" value="heavy" class="rounded text-teal-500">
+                                <span>Körper fühlt sich wie Blei an</span>
+                            </label>
+                            <label class="flex items-center space-x-2.5 p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/60 cursor-pointer hover:bg-slate-800">
+                                <input type="checkbox" name="symptoms" value="tension" class="rounded text-teal-500">
+                                <span>Engegefühl / Druck auf der Brust</span>
+                            </label>
+                            <label class="flex items-center space-x-2.5 p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/60 cursor-pointer hover:bg-slate-800">
+                                <input type="checkbox" name="symptoms" value="no_appetite" class="rounded text-teal-500">
+                                <span>Essen vergessen / Kein Appetit</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 text-center">
+                        <button type="submit" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-sm transition shadow-lg shadow-teal-500/25 active:scale-95">
+                            Antworten auswerten & Ziele wählen →
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- SUBSTEP 2: Goal Selection -->
+            <div id="coach-step-goals" class="hidden max-w-2xl mx-auto my-auto w-full space-y-6 py-4">
+                <!-- Deduced Profile Card -->
+                <div id="deduced-profile-card" class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                    <!-- Dynamic Profile Header -->
+                </div>
+
+                <div class="space-y-3">
+                    <h4 class="text-xs font-bold text-teal-400 uppercase tracking-wider">
+                        Empfohlenes Stabilisierungsziel wählen:
+                    </h4>
+                    <div id="goals-list-container" class="space-y-2">
+                        <!-- Dynamic Goals List -->
+                    </div>
+                </div>
+
+                <!-- Custom Goal Input -->
+                <div class="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-2">
+                    <label class="block text-xs font-bold text-slate-300">
+                        Oder formuliere ein eigenes, akutes Anliegen:
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="text" id="custom-goal-input" placeholder="z. B. Heute vor 23 Uhr Handy ausschalten und ins Bett gehen..." class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500">
+                        <button onclick="app.startCoachWithCustomGoal()" class="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition shrink-0">
+                            Starten
+                        </button>
+                    </div>
+                </div>
+
+                <div class="text-left">
+                    <button onclick="app.showCoachStep('assessment')" class="text-xs text-slate-400 hover:text-white transition">
+                        ← Zurück zur Fragenanpassung
+                    </button>
+                </div>
+            </div>
+
+            <!-- SUBSTEP 3: Live Coach Chat -->
+            <div id="coach-step-chat" class="hidden flex-1 flex flex-col h-[calc(100vh-140px)] max-h-[820px] rounded-3xl bg-slate-900/50 border border-slate-800/80 overflow-hidden shadow-2xl">
+                <!-- Chat Top Bar -->
+                <div class="p-3 sm:p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div id="chat-header-avatar" class="w-9 h-9 rounded-2xl bg-teal-950 border border-teal-700 text-teal-300 flex items-center justify-center font-bold text-base shadow-inner">
+                            ☯
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-white">AuraMind Coach</span>
+                                <span id="chat-profile-badge" class="text-[10px] px-2 py-0.5 rounded-full font-semibold border">
+                                    Profil aktiv
+                                </span>
+                                <span id="chat-ai-status" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                                    Lokale KVT-Engine
+                                </span>
+                            </div>
+                            <p id="chat-current-goal" class="text-[11px] text-slate-400 truncate max-w-xs sm:max-w-md">
+                                Ziel: ...
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <button onclick="app.openModal('modal-breathing')" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-teal-300 text-xs font-semibold transition flex items-center gap-1.5">
+                            <span>🫁</span>
+                            <span class="hidden sm:inline">4-7-8 Atmung</span>
+                        </button>
+                        <button onclick="app.showCoachStep('assessment')" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs transition" title="Neuer Check-in">
+                            🔄
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Chat History Messages Scroll -->
+                <div id="chat-messages-container" class="flex-1 overflow-y-auto p-4 space-y-4">
+                    <!-- Dynamic Messages -->
+                </div>
+
+                <!-- Quick Replies Row -->
+                <div id="chat-quick-replies" class="px-4 py-2 bg-slate-900/60 border-t border-slate-800 flex gap-2 overflow-x-auto text-xs">
+                    <!-- Dynamic quick buttons -->
+                </div>
+
+                <!-- Chat Input Row -->
+                <div class="p-3 bg-slate-900 border-t border-slate-800 flex items-center gap-2">
+                    <input type="text" id="chat-input" placeholder="Schreibe deinem Coach oder schildere deine Gedanken..." onkeydown="if(event.key==='Enter') app.sendChatMessage();" class="flex-1 bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-500">
+                    <button id="chat-send-btn" onclick="app.sendChatMessage()" class="px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition shadow-md shadow-teal-500/20 active:scale-95 flex items-center gap-1">
+                        <span>Senden</span>
+                        <span>➤</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB: HISTORY ================= -->
+        <section id="tab-history" class="hidden max-w-3xl mx-auto w-full space-y-6 py-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div>
+                    <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                        <span>📋</span>
+                        <span>Gespeicherte Coaching-Sitzungen</span>
+                    </h2>
+                    <p id="history-subtitle" class="text-xs text-slate-400">
+                        Alle Antworten, Check-in-Ergebnisse und KI-Ratschläge verbleiben dauerhaft in deinem Verlauf.
+                    </p>
+                </div>
+            </div>
+
+            <div id="history-list-container" class="space-y-4">
+                <!-- Dynamically populated session cards -->
+            </div>
+        </section>
+
+        <!-- ================= TAB: PROFILE ================= -->
+        <section id="tab-profile" class="hidden max-w-2xl mx-auto w-full space-y-6 py-4">
+            <div class="pb-3 border-b border-slate-800">
+                <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                    <span>👤</span>
+                    <span>Dein persönliches Profil</span>
+                </h2>
+                <p class="text-xs text-slate-400">
+                    Diese Angaben helfen der App und der KI, die Ratschläge präzise auf deine Lebenssituation anzupassen.
+                </p>
+            </div>
+
+            <form id="profile-form" onsubmit="event.preventDefault(); app.saveProfile();" class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-xl">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-300">Name / Rufname:</label>
+                        <input type="text" id="profile-name" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-300">E-Mail-Adresse:</label>
+                        <input type="email" id="profile-email" disabled class="w-full bg-slate-800/50 border border-slate-700/60 rounded-xl px-3 py-2 text-xs text-slate-400 cursor-not-allowed">
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-300">Alter:</label>
+                        <input type="number" id="profile-age" min="14" max="120" placeholder="z. B. 32" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-300">Zivilstand:</label>
+                        <select id="profile-civil-status" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                            <option value="Ledig">Ledig</option>
+                            <option value="In Partnerschaft / Beziehung">In Partnerschaft / Beziehung</option>
+                            <option value="Verheiratet">Verheiratet</option>
+                            <option value="Eingetragene Partnerschaft">Eingetragene Partnerschaft</option>
+                            <option value="Getrennt lebend">Getrennt lebend</option>
+                            <option value="Geschieden">Geschieden</option>
+                            <option value="Verwitwet">Verwitwet</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-1.5 sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-300">Wohnort:</label>
+                        <input type="text" id="profile-location" placeholder="z. B. Zürich, Bern, Basel oder Berlin" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                    </div>
+
+                    <div class="space-y-1.5 sm:col-span-2">
+                        <label class="block text-xs font-bold text-rose-300">Persönlicher Notfallkontakt (im Krisenfall):</label>
+                        <input type="text" id="profile-emergency-contact" placeholder="Name & Telefonnummer einer Vertrauensperson oder eines Arztes" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                    </div>
+
+                    <div class="space-y-1.5 sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-300">Persönliche Trigger & Notizen für den Coach:</label>
+                        <textarea id="profile-notes" rows="3" placeholder="Was triggert dich? Woran merkst du frühzeitig, dass eine manische oder depressive Phase naht?" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-teal-500"></textarea>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex justify-end">
+                    <button type="submit" class="px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition shadow-md shadow-teal-500/20">
+                        Änderungen speichern
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- ================= TAB: ADMIN BACKEND ================= -->
+        <section id="tab-admin" class="hidden max-w-4xl mx-auto w-full space-y-6 py-4">
+            
+            <!-- Admin Login Box -->
+            <div id="admin-login-view" class="max-w-md mx-auto p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-2xl">
+                <div class="text-center space-y-2">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-950 border border-amber-800 text-amber-300 flex items-center justify-center mx-auto text-xl">
+                        🔒
+                    </div>
+                    <h3 class="text-lg font-bold text-white">Admin-Backend Login</h3>
+                    <p class="text-xs text-slate-400">
+                        Zugang für Betreiber zur Hinterlegung des Google Gemini API-Keys und zur Systemüberwachung.
+                    </p>
+                </div>
+
+                <form onsubmit="event.preventDefault(); app.loginAdmin();" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Admin-PIN / Passwort:</label>
+                        <input type="password" id="admin-pin-input" placeholder="Standard: admin2026" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                    </div>
+                    <button type="submit" class="w-full py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition">
+                        Im Admin-Bereich anmelden →
+                    </button>
+                </form>
+                <div class="text-[11px] text-center text-slate-500">
+                    Standard-PIN: <code class="text-teal-400">admin2026</code>
+                </div>
+            </div>
+
+            <!-- Admin Control Dashboard (Shown after Login) -->
+            <div id="admin-dashboard-view" class="hidden space-y-6">
+                <div class="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-slate-900 border border-amber-900/60 shadow-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-950/80 border border-amber-700 text-amber-300 flex items-center justify-center text-lg">
+                            ⚙️
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold text-white">AuraMind Admin-Konsole</h2>
+                            <p class="text-xs text-slate-400">Zentrale KI-Steuerung & Benutzerverwaltung</p>
+                        </div>
+                    </div>
+                    <button onclick="app.logoutAdmin()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-xs text-slate-300 transition">
+                        Admin-Abmeldung
+                    </button>
+                </div>
+
+                <!-- API-Key Settings -->
+                <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+                    <div class="flex items-center gap-2 pb-2 border-b border-slate-800">
+                        <span class="text-teal-400">🔑</span>
+                        <h3 class="text-sm font-bold text-white">Google Gemini API-Key Konfiguration</h3>
+                    </div>
+
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Hier hinterlegst du deinen zentralen Google Gemini API-Key. Alle registrierten Nutzer greifen automatisch über diesen Schlüssel auf die Live-KI zu, ohne ihn selbst eingeben zu müssen.
+                    </p>
+
+                    <div class="space-y-2">
+                        <label class="block text-xs font-semibold text-slate-300">Gemini API Key:</label>
+                        <div class="flex gap-2">
+                            <input type="password" id="admin-api-key" placeholder="AIzaSy..." class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-teal-500 font-mono">
+                            <button onclick="app.testAdminApiKey()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-teal-300 text-xs font-bold transition shrink-0">
+                                Verbindung testen ⚡
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                        <div class="space-y-1">
+                            <label class="block text-xs font-semibold text-slate-300">Modell:</label>
+                            <input type="text" value="gemini-3-flash-preview" disabled class="w-full bg-slate-800/60 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-300 font-mono">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="block text-xs font-semibold text-slate-300">Admin PIN ändern:</label>
+                            <input type="text" id="admin-pin-change" value="admin2026" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono">
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex justify-end">
+                        <button onclick="app.saveAdminConfig()" class="px-6 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition">
+                            Admin-Einstellungen speichern
+                        </button>
+                    </div>
+                </div>
+
+                <!-- User Management Table -->
+                <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                        <div class="flex items-center gap-2">
+                            <span class="text-teal-400">🗄️</span>
+                            <h3 class="text-sm font-bold text-white">Registrierte Benutzerprofile</h3>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="border-b border-slate-800 text-slate-400">
+                                    <th class="py-2 px-3">Name</th>
+                                    <th class="py-2 px-3">Alter</th>
+                                    <th class="py-2 px-3">Zivilstand</th>
+                                    <th class="py-2 px-3">Wohnort</th>
+                                    <th class="py-2 px-3">Sitzungen</th>
+                                    <th class="py-2 px-3">Aktion</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-user-tbody" class="divide-y divide-slate-800/60">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB: AUTH ================= -->
+        <section id="tab-auth" class="hidden max-w-md mx-auto my-auto w-full p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-6 shadow-2xl">
+            <div class="text-center space-y-2">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-400 text-slate-950 flex items-center justify-center mx-auto text-xl font-black">
+                    ☯
+                </div>
+                <h2 id="auth-heading" class="text-2xl font-bold text-white">Willkommen bei AuraMind</h2>
+                <p class="text-xs text-slate-400">
+                    Deine mentale Stabilität begleiten und Fortschritte festhalten.
+                </p>
+            </div>
+
+            <!-- Mode Switcher -->
+            <div class="flex rounded-xl bg-slate-800 p-1 text-xs">
+                <button id="auth-tab-login" onclick="app.setAuthMode('login')" class="flex-1 py-2 rounded-lg font-bold bg-teal-500 text-slate-950 transition">
+                    Anmelden
+                </button>
+                <button id="auth-tab-register" onclick="app.setAuthMode('register')" class="flex-1 py-2 rounded-lg font-bold text-slate-400 hover:text-white transition">
+                    Registrieren
+                </button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="auth-form-login" onsubmit="event.preventDefault(); app.handleLogin();" class="space-y-4">
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-300">E-Mail-Adresse:</label>
+                    <input type="email" id="auth-login-email" required placeholder="elena@beispiel.ch" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-teal-500">
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-300">Passwort:</label>
+                    <input type="password" id="auth-login-password" required placeholder="••••••••" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-teal-500">
+                </div>
+                <button type="submit" class="w-full py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-teal-500/20">
+                    Anmelden →
+                </button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="auth-form-register" onsubmit="event.preventDefault(); app.handleRegister();" class="hidden space-y-3">
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-300">Vollständiger Name:</label>
+                    <input type="text" id="auth-reg-name" required placeholder="z. B. Sophie Meier" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-300">E-Mail-Adresse:</label>
+                    <input type="email" id="auth-reg-email" required placeholder="sophie@beispiel.ch" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-300">Passwort:</label>
+                    <input type="password" id="auth-reg-password" required placeholder="Sicheres Passwort" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-slate-300">Alter:</label>
+                        <input type="number" id="auth-reg-age" placeholder="z. B. 28" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-slate-300">Zivilstand:</label>
+                        <select id="auth-reg-civil-status" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                            <option value="Ledig">Ledig</option>
+                            <option value="In Partnerschaft / Beziehung">In Partnerschaft</option>
+                            <option value="Verheiratet">Verheiratet</option>
+                            <option value="Eingetragene Partnerschaft">Eingetr. Partnerschaft</option>
+                            <option value="Getrennt lebend">Getrennt lebend</option>
+                            <option value="Geschieden">Geschieden</option>
+                            <option value="Verwitwet">Verwitwet</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-xs font-bold text-slate-300">Wohnort:</label>
+                    <input type="text" id="auth-reg-location" placeholder="z. B. Bern, CH" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                </div>
+                <button type="submit" class="w-full py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-teal-500/20 mt-2">
+                    Registrieren & Starten →
+                </button>
+            </form>
+
+            <!-- Quick Demo Accounts -->
+            <div class="pt-2 border-t border-slate-800 text-center space-y-2">
+                <span class="text-[11px] text-slate-500">Oder Demo-Konto wählen:</span>
+                <div id="demo-users-row" class="flex justify-center gap-2">
+                    <!-- Dynamic Demo Buttons -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ================= MODAL: 4-7-8 BREATHING ================= -->
+    <div id="modal-breathing" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="w-full max-w-sm rounded-3xl bg-slate-900 border border-teal-900/60 p-6 flex flex-col items-center text-center space-y-6 shadow-2xl">
+            <div class="w-full flex justify-between items-center pb-2 border-b border-slate-800">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <span>🫁</span>
+                    <span>4-7-8 Atemregulation</span>
+                </h3>
+                <button onclick="app.closeModal('modal-breathing')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <p class="text-xs text-slate-300">
+                Aktiviert den Parasympathikus, senkt die Herzfrequenz und dämpft akute Übererregung.
+            </p>
+
+            <div class="relative w-48 h-48 flex items-center justify-center">
+                <div id="breathing-circle" class="breathe-anim w-28 h-28 rounded-full border-2 border-teal-500/40 bg-teal-500/10 flex items-center justify-center shadow-lg">
+                    <span id="breathing-counter" class="text-2xl font-black text-white">4</span>
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <div id="breathing-phase-label" class="text-base font-bold text-teal-300">Einatmen (durch die Nase)</div>
+                <div id="breathing-phase-sub" class="text-[11px] text-slate-400">Tief in den Bauchraum atmen (4s)</div>
+            </div>
+
+            <button id="breathing-toggle-btn" onclick="app.toggleBreathingExercise()" class="w-full py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-teal-500/20">
+                Übung starten
+            </button>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: SKILLS ================= -->
+    <div id="modal-tools" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div class="flex items-center space-x-2 text-teal-400">
+                    <span>🧰</span>
+                    <h3 class="text-base font-bold text-white">Notfallkoffer & Reiz-Notbremsen</h3>
+                </div>
+                <button onclick="app.closeModal('modal-tools')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300 flex items-center gap-1.5">
+                        <span>🧊</span> DBT-Tauchreflex (Kälte-Reiz)
+                    </div>
+                    <p class="text-slate-300 leading-relaxed">
+                        Halte deine Handgelenke oder ein nasses Tuch mit Eiswasser für 20–30 Sekunden an Schläfen und Stirn. Der Säugetier-Tauchreflex verlangsamt reflexartig den Puls und unterbricht quälendes Gedankenrasen.
+                    </p>
+                </div>
+
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-teal-300 flex items-center gap-1.5">
+                        <span>🖐️</span> 5-4-3-2-1 Sinne-Erdung
+                    </div>
+                    <p class="text-slate-300 leading-relaxed">
+                        Benenne laut: <strong>5</strong> Dinge, die du siehst • <strong>4</strong> Dinge, die du berührst • <strong>3</strong> Geräusche • <strong>2</strong> Gerüche • <strong>1</strong> Geschmack. Bringt den Geist sofort ins Hier und Jetzt.
+                    </p>
+                </div>
+
+                <div class="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 space-y-1">
+                    <div class="font-bold text-amber-300 flex items-center gap-1.5">
+                        <span>🔒</span> 48-Stunden-Kaufregel
+                    </div>
+                    <p class="text-slate-300 leading-relaxed">
+                        Bei manischem Kaufdrang: Schreibe den Artikel auf einen Zettel, schließe alle Browser-Tabs und stelle dir einen Wecker auf genau 48 Stunden. Du verbietest es dir nicht – du prüfst es nur mit klarem Kopf.
+                    </p>
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <button onclick="app.closeModal('modal-tools')" class="w-full py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:text-white transition">
+                    Schließen
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: SOS ================= -->
+    <div id="modal-sos" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-2xl bg-slate-900 border border-rose-900/80 p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div class="flex items-center space-x-2 text-rose-400">
+                    <span>🚨</span>
+                    <h3 class="text-base font-bold text-white">Akute Hilfe & Notfallstellen</h3>
+                </div>
+                <button onclick="app.closeModal('modal-sos')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <p class="text-xs text-slate-300 leading-relaxed">
+                Wenn du dich in einer schweren Krise befindest oder dich selbst nicht mehr sicher kontrollieren kannst: Wende dich unverzüglich an diese kostenlosen Stellen:
+            </p>
+
+            <div class="space-y-2 text-xs">
+                <a href="tel:112" class="flex items-center justify-between p-3 rounded-xl bg-rose-950/70 border border-rose-800 text-rose-200 hover:bg-rose-900 transition font-bold">
+                    <div>
+                        <span class="text-sm block">112 / 144 – Notruf & Rettungsdienst</span>
+                        <span class="text-[11px] font-normal text-rose-300">Bei akuter Eigen- oder Fremdgefährdung</span>
+                    </div>
+                    <span>Anrufen 📞</span>
+                </a>
+
+                <a href="tel:143" class="flex items-center justify-between p-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-750 transition">
+                    <div>
+                        <strong class="text-sm block text-white">143 (CH) – Die Dargebotene Hand</strong>
+                        <span class="text-[11px] text-slate-400">24/7 anonyme Krisenhilfe für die Schweiz</span>
+                    </div>
+                    <span class="text-teal-400 font-bold">Anrufen 📞</span>
+                </a>
+
+                <a href="tel:08001110111" class="flex items-center justify-between p-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-750 transition">
+                    <div>
+                        <strong class="text-sm block text-white">0800 111 0 111 (DE) – TelefonSeelsorge</strong>
+                        <span class="text-[11px] text-slate-400">Kostenfrei und 24/7 erreichbar</span>
+                    </div>
+                    <span class="text-teal-400 font-bold">Anrufen 📞</span>
+                </a>
+
+                <div id="sos-personal-contact-box" class="p-3 rounded-xl bg-slate-800/80 border border-teal-800/60 text-teal-300 hidden">
+                    <div class="font-bold text-[11px] text-teal-400">Dein hinterlegter Notfallkontakt:</div>
+                    <div id="sos-personal-contact-val" class="text-xs text-white mt-0.5">-</div>
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <button onclick="app.closeModal('modal-sos')" class="w-full py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:text-white transition">
+                    Zurück zur App
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Box -->
+    <div id="toast-el" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 px-4 py-3 rounded-xl bg-slate-900 border border-teal-500 text-teal-300 text-xs shadow-2xl flex items-center gap-2 pointer-events-none">
+        <span>✓</span>
+        <span id="toast-text">Hinweis</span>
+    </div>
+
+    <script>
+        const INITIAL_USERS = [
+            {
+                id: 'usr-1',
+                email: 'elena@beispiel.ch',
+                password: 'password123',
+                name: 'Elena Müller',
+                age: 32,
+                civilStatus: 'In Partnerschaft / Beziehung',
+                location: 'Zürich, CH',
+                emergencyContact: 'Markus (Partner) – +41 79 123 45 67',
+                notes: 'Neigt im Frühjahr zu hypo-manischem Gedankenrasen und Impulskäufen.',
+                sessions: [
+                    {
+                        id: 'sess-1',
+                        date: '12.09.2026, 14:30',
+                        tendency: 'mania',
+                        title: 'Hohe Übererregung & Impulsdruck',
+                        goal: 'Impuls-Kauf & Vertrags-Stopp (48h-Pause)',
+                        messages: [
+                            { sender: 'assistant', text: 'Hallo Elena! Ich habe deine hohe Anspannung und den reduzierten Schlaf registriert. Lass uns die 48-Stunden-Kaufregel aktivieren.' },
+                            { sender: 'user', text: 'Ich wollte gerade 3 teure Kameras online bestellen, obwohl ich schon eine habe.' },
+                            { sender: 'assistant', text: 'Sehr gut, dass du kurz innehältst. Lege das Handy bitte für 20 Minuten in einen anderen Raum und trinke ein Glas kaltes Wasser.' }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'usr-2',
+                email: 'jonas@beispiel.de',
+                password: 'password123',
+                name: 'Jonas Weber',
+                age: 41,
+                civilStatus: 'Ledig',
+                location: 'Berlin, DE',
+                emergencyContact: 'Dr. Schneider (Therapeutin) – 030 987654',
+                notes: 'Wiederkehrende morgendliche Erstarrung und starker sozialer Rückzug.',
+                sessions: []
+            }
+        ];
+
+        const GOAL_PRESETS = {
+            mania: [
+                { id: 'm1', title: 'Reizüberflutung drosseln & Sinnesruhe', desc: 'Bildschirme dimmen, Musik abschalten und Sinnesreize minimieren.' },
+                { id: 'm2', title: 'Impuls-Kauf & Vertrags-Stopp (48h-Pause)', desc: 'Alle finanziellen und vertraglichen Entscheidungen um 48h vertagen.' },
+                { id: 'm3', title: 'Schlaf-Rhythmus verteidigen', desc: 'Trotz fehlendem Müdigkeitsgefühl feste Bettruhe und Dunkelheit wahren.' }
+            ],
+            depression: [
+                { id: 'd1', title: '1%-Mikroschritt aus der Lähmung', desc: 'Nur eine winzige 2-Minuten-Aufgabe ohne Leistungsdruck umsetzen.' },
+                { id: 'd2', title: 'Gedankenschleifen & Selbstvorwürfe stoppen', desc: 'Negative Grübelspiralen durch kognitive Distanzierung unterbrechen.' },
+                { id: 'd3', title: 'Körperliche Grundversorgung sichern', desc: 'Ausreichend Wasser trinken, eine Kleinigkeit essen und frische Luft holen.' }
+            ],
+            mixed: [
+                { id: 'x1', title: 'Akute innere Zerrissenheit entladen', desc: 'Sicheres Ventil für hohe Agitation (Kältereiz, Atemarbeit, Bewegung).' },
+                { id: 'x2', title: 'Gedankensortierung & 5-Sinne-Erdung', desc: 'Mit der 5-4-3-2-1 Methode festen Boden unter den Füßen spüren.' },
+                { id: 'x3', title: 'Reiz-Notbremse & Deeskalation', desc: 'Konfliktsituationen sofort verlassen und das Nervensystem beruhigen.' }
+            ],
+            balanced: [
+                { id: 'b1', title: 'Frühwarnzeichen wachsam beobachten', desc: 'Kleine Veränderungen im Schlafrhythmus oder Impulslevel festhalten.' },
+                { id: 'b2', title: 'Gleichmäßigen Tagesrhythmus festigen', desc: 'Feste Zeiten für Aufstehen, Mahlzeiten und Ruhephasen beibehalten.' },
+                { id: 'b3', title: 'Achtsamkeits- & Dankbarkeitsübung', desc: 'Kurze Reflexion über die eigene emotionale Stabilität durchführen.' }
+            ]
+        };
+
+        const app = {
+            state: {
+                activeTab: 'coach',
+                coachStep: 'assessment', // 'assessment' | 'goals' | 'chat'
+                users: INITIAL_USERS,
+                currentUser: null,
+                adminConfig: {
+                    apiKey: '',
+                    systemModel: 'gemini-3-flash-preview',
+                    adminPin: 'admin2026'
+                },
+                isAdminAuthenticated: false,
+                currentProfile: null,
+                selectedGoal: '',
+                currentSessionId: null,
+                chatMessages: [],
+                isAiLoading: false,
+                breathingTimer: null,
+                breathingRunning: false,
+                breathingCountdown: 4,
+                breathingPhase: 0 // 0: ein (4), 1: halten (7), 2: aus (8)
+            },
+
+            init() {
+                // Restore state from LocalStorage if exists
+                try {
+                    const savedUsers = localStorage.getItem('auramind_users_v2');
+                    if (savedUsers) this.state.users = JSON.parse(savedUsers);
+
+                    const savedAdmin = localStorage.getItem('auramind_admin_config_v2');
+                    if (savedAdmin) this.state.adminConfig = JSON.parse(savedAdmin);
+                } catch(e) {}
+
+                // Auto login default demo user
+                this.state.currentUser = this.state.users[0];
+                this.updateAuthUI();
+                this.renderDemoUsers();
+                this.switchTab('coach');
+                this.showCoachStep('assessment');
+            },
+
+            persist() {
+                try {
+                    localStorage.setItem('auramind_users_v2', JSON.stringify(this.state.users));
+                    localStorage.setItem('auramind_admin_config_v2', JSON.stringify(this.state.adminConfig));
+                } catch(e) {}
+            },
+
+            showToast(msg) {
+                const toast = document.getElementById('toast-el');
+                const text = document.getElementById('toast-text');
+                text.textContent = msg;
+                toast.classList.remove('translate-y-20', 'opacity-0');
+                setTimeout(() => {
+                    toast.classList.add('translate-y-20', 'opacity-0');
+                }, 3200);
+            },
+
+            switchTab(tabId) {
+                this.state.activeTab = tabId;
+                const tabs = ['coach', 'history', 'profile', 'admin', 'auth'];
+                tabs.forEach(t => {
+                    const el = document.getElementById(`tab-${t}`);
+                    const nav = document.getElementById(`nav-${t}`);
+                    if (el) el.classList.toggle('hidden', t !== tabId);
+                    if (nav) {
+                        if (t === tabId) {
+                            nav.className = "px-3 py-1.5 rounded-lg transition font-bold bg-teal-500 text-slate-950 flex items-center gap-1.5";
+                        } else {
+                            nav.className = "px-3 py-1.5 rounded-lg transition font-medium text-slate-300 hover:text-white flex items-center gap-1.5";
+                        }
+                    }
+                });
+
+                if (tabId === 'history') this.renderHistory();
+                if (tabId === 'profile') this.renderProfileForm();
+                if (tabId === 'admin') this.renderAdminTab();
+
+                this.updateAuthUI();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            },
+
+            handleUserHeaderAction() {
+                if (this.state.currentUser) {
+                    this.state.currentUser = null;
+                    this.switchTab('auth');
+                    this.showToast('Erfolgreich abgemeldet.');
+                } else {
+                    this.switchTab('auth');
+                }
+            },
+
+            updateAuthUI() {
+                const btn = document.getElementById('user-action-btn');
+                const badge = document.getElementById('history-badge');
+                if (this.state.currentUser) {
+                    btn.innerHTML = '🚪';
+                    btn.title = `Angemeldet als ${this.state.currentUser.name} (Abmelden)`;
+                    const count = this.state.currentUser.sessions?.length || 0;
+                    if (badge) {
+                        badge.textContent = count;
+                        badge.classList.toggle('hidden', count === 0);
+                    }
+                } else {
+                    btn.innerHTML = '👤';
+                    btn.title = 'Anmelden / Registrieren';
+                    if (badge) badge.classList.add('hidden');
+                }
+            },
+
+            showCoachStep(step) {
+                this.state.coachStep = step;
+                document.getElementById('coach-step-assessment').classList.toggle('hidden', step !== 'assessment');
+                document.getElementById('coach-step-goals').classList.toggle('hidden', step !== 'goals');
+                document.getElementById('coach-step-chat').classList.toggle('hidden', step !== 'chat');
+            },
+
+            submitAssessment() {
+                const form = document.getElementById('assessment-form');
+                const formData = new FormData(form);
+
+                const energySleep = formData.get('energySleep');
+                const thoughtSpeed = formData.get('thoughtSpeed');
+                const behavior = formData.get('behavior');
+                const symptoms = formData.getAll('symptoms');
+
+                if (!energySleep || !thoughtSpeed || !behavior) {
+                    this.showToast('Bitte beantworte alle 3 Kernfragen.');
+                    return;
+                }
+
+                let scores = { mania: 0, depression: 0, mixed: 0, balanced: 0 };
+                if (energySleep === 'high_mania') scores.mania += 3;
+                else if (energySleep === 'low_dep') scores.depression += 3;
+                else if (energySleep === 'agitated_mixed') scores.mixed += 3;
+                else scores.balanced += 2;
+
+                if (thoughtSpeed === 'racing_mania') scores.mania += 3;
+                else if (thoughtSpeed === 'foggy_dep') scores.depression += 3;
+                else if (thoughtSpeed === 'looping_mixed') { scores.mixed += 2; scores.depression += 1; }
+                else scores.balanced += 2;
+
+                if (behavior === 'risk_mania') scores.mania += 3;
+                else if (behavior === 'retreat_dep') scores.depression += 3;
+                else if (behavior === 'irritable_mixed') scores.mixed += 3;
+                else scores.balanced += 2;
+
+                symptoms.forEach(s => {
+                    if (s === 'shopping') scores.mania += 1;
+                    if (s === 'heavy') scores.depression += 1;
+                    if (s === 'tension') scores.mixed += 1;
+                    if (s === 'no_appetite') { scores.mania += 1; scores.depression += 1; }
+                });
+
+                let detected = 'balanced';
+                if (scores.mixed >= 4 || (scores.mania >= 3 && scores.depression >= 3)) detected = 'mixed';
+                else if (scores.mania > scores.depression && scores.mania > scores.balanced) detected = 'mania';
+                else if (scores.depression > scores.mania && scores.depression > scores.balanced) detected = 'depression';
+                else detected = 'balanced';
+
+                const profiles = {
+                    mania: {
+                        tendency: 'mania',
+                        title: 'Hohe Übererregung & Impulsdruck',
+                        badge: '⚡ Übererregung / Hypomanie',
+                        badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+                        desc: 'Signifikant reduziertes Schlafbedürfnis, Gedankensprünge und starker Drang zu Handlungen oder Käufen. Ziel: Reize drosseln, 48h-Pausen aktivieren und Schlaf wahren.'
+                    },
+                    depression: {
+                        tendency: 'depression',
+                        title: 'Erhöhte Erschöpfung & Energielosigkeit',
+                        badge: '🌧️ Depressive Erschöpfung',
+                        badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40',
+                        desc: 'Schwere im Körper, verlangsamtes Denken und Neigung zu Rückzug und Selbstvorwürfen. Ziel: Radikale 1%-Mikroschritte ohne Druck und sanfte Selbstfürsorge.'
+                    },
+                    mixed: {
+                        tendency: 'mixed',
+                        title: 'Agitierter Mischzustand',
+                        badge: '🌪️ Mischzustand (Agitation)',
+                        badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+                        desc: 'Gleichzeitige körperliche Getriebenheit bei quälenden negativen Gedanken oder extremer Reizbarkeit. Ziel: Physische Notbremse (Kältereiz), 5-Sinne-Erdung und Deeskalation.'
+                    },
+                    balanced: {
+                        tendency: 'balanced',
+                        title: 'Überwiegend stabiler Gleichgewichtszustand',
+                        badge: '🌱 Stabile Balance',
+                        badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+                        desc: 'Ausgeglichenes Energielevel und normale Impulskontrolle. Ziel: Achtsame Prophylaxe, Frühwarnzeichen beobachten und gesunde Rhythmen festigen.'
+                    }
+                };
+
+                this.state.currentProfile = profiles[detected];
+                this.renderGoalsStep();
+                this.showCoachStep('goals');
+            },
+
+            renderGoalsStep() {
+                const profile = this.state.currentProfile;
+                const card = document.getElementById('deduced-profile-card');
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold px-3 py-1 rounded-full border ${profile.badgeColor}">
+                            ${profile.badge}
+                        </span>
+                        <button onclick="app.showCoachStep('assessment')" class="text-xs text-slate-400 hover:text-white transition">
+                            ← Fragen anpassen
+                        </button>
+                    </div>
+                    <h3 class="text-xl font-bold text-white">${profile.title}</h3>
+                    <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">${profile.desc}</p>
+                `;
+
+                const container = document.getElementById('goals-list-container');
+                container.innerHTML = '';
+                const goals = GOAL_PRESETS[profile.tendency] || GOAL_PRESETS.balanced;
+                goals.forEach(g => {
+                    const item = document.createElement('div');
+                    item.className = "p-4 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-teal-500 cursor-pointer transition flex items-center justify-between group";
+                    item.onclick = () => this.startCoachSession(g.title);
+                    item.innerHTML = `
+                        <div class="space-y-1 pr-3">
+                            <div class="text-sm font-bold text-white group-hover:text-teal-300 transition">${g.title}</div>
+                            <div class="text-xs text-slate-400">${g.desc}</div>
+                        </div>
+                        <span class="shrink-0 px-3 py-1 rounded-xl bg-slate-800 text-teal-400 font-bold text-xs group-hover:bg-teal-500 group-hover:text-slate-950 transition">
+                            Wählen →
+                        </span>
+                    `;
+                    container.appendChild(item);
+                });
+            },
+
+            startCoachWithCustomGoal() {
+                const input = document.getElementById('custom-goal-input');
+                const val = input.value.trim();
+                this.startCoachSession(val || 'Ruhe und Stabilität finden');
+            },
+
+            startCoachSession(goalTitle) {
+                if (!this.state.currentUser) {
+                    this.switchTab('auth');
+                    this.showToast('Bitte melde dich kurz an, um deine Sitzung zu speichern.');
+                    return;
+                }
+
+                this.state.selectedGoal = goalTitle;
+                const sessionId = `sess-${Date.now()}`;
+                this.state.currentSessionId = sessionId;
+
+                const greeting = this.createInitialGreeting(this.state.currentProfile.tendency, goalTitle, this.state.currentUser);
+
+                const newSession = {
+                    id: sessionId,
+                    date: new Date().toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }),
+                    tendency: this.state.currentProfile.tendency,
+                    title: this.state.currentProfile.title,
+                    goal: goalTitle,
+                    messages: [{ sender: 'assistant', text: greeting.text }]
+                };
+
+                this.state.currentUser.sessions = [newSession, ...(this.state.currentUser.sessions || [])];
+                this.persist();
+
+                this.state.chatMessages = newSession.messages;
+                this.showCoachStep('chat');
+
+                // Header status
+                document.getElementById('chat-current-goal').innerHTML = `Ziel: <strong class="text-slate-200">${goalTitle}</strong>`;
+                const badge = document.getElementById('chat-profile-badge');
+                badge.className = `text-[10px] px-2 py-0.5 rounded-full font-semibold border ${this.state.currentProfile.badgeColor}`;
+                badge.textContent = this.state.currentProfile.badge;
+
+                const aiStatus = document.getElementById('chat-ai-status');
+                if (this.state.adminConfig.apiKey) {
+                    aiStatus.className = "text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1 font-mono";
+                    aiStatus.innerHTML = `<span>✨</span> Gemini KI aktiv`;
+                } else {
+                    aiStatus.className = "text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700";
+                    aiStatus.innerHTML = `Lokale KVT-Engine`;
+                }
+
+                this.renderChatMessages();
+                this.renderQuickReplies(greeting.suggestions);
+            },
+
+            createInitialGreeting(tendency, goal, user) {
+                const firstName = user?.name ? user.name.split(' ')[0] : '';
+                const base = `Hallo ${firstName}! Schön, dass du dir diesen Moment nimmst.`;
+
+                if (tendency === 'mania') {
+                    return {
+                        text: `${base}\n\n⚡ Dein System befindet sich im Beschleunigungsmodus. Ideen sprudeln und das Schlafbedürfnis sinkt – doch genau jetzt ist es wichtig, dich vor Erschöpfung und unüberlegten Impulsen zu schützen.\n\nDein gewähltes Ziel: **"${goal}"**.\n\nWie sieht deine direkte Umgebung gerade aus? Gibt es laute Musik, helle Lichter oder offene Shopping-Tabs?`,
+                        suggestions: [
+                            'Hier läuft laute Musik & grelles Licht',
+                            'Ich habe einen Impulskauf im Sinn',
+                            'Lass uns die 4-7-8 Atemübung starten',
+                            'Ich habe seit gestern kaum geschlafen'
+                        ]
+                    };
+                } else if (tendency === 'depression') {
+                    return {
+                        text: `${base}\n\n🌧️ Dein System läuft auf äußerster Sparflamme. Jede Bewegung und Entscheidung fühlt sich bleischwer an. Wichtigste Regel für heute: **Du musst überhaupt nichts leisten.**\n\nFür dein Ziel: **"${goal}"** arbeiten wir nur mit winzigen **1%-Mikroschritten**.\n\nWo bist du gerade? Liegst du im Bett oder auf dem Sofa?`,
+                        suggestions: [
+                            'Ich liege im Bett und komme nicht hoch',
+                            'Ich mache mir Vorwürfe, nichts zu schaffen',
+                            'Gib mir einen einfachen 2-Minuten-Schritt',
+                            'Ich fühle mich innerlich taub'
+                        ]
+                    };
+                } else if (tendency === 'mixed') {
+                    return {
+                        text: `${base}\n\n🌪️ Körperliche Getriebenheit gepaart mit innerer Zerrissenheit ist extrem kräfteraubend. Dein Körper will rennen, während dein Geist leidet.\n\nFür dein Ziel: **"${goal}"** nutzen wir **körperliche Notbremsen (DBT-Skills)**, um den Alarmzustand deines Nervensystems zu dämpfen.\n\nMöchtest du die 5-Sinne-Erdung ausprobieren oder kurz kaltes Wasser an die Schläfen bringen?`,
+                        suggestions: [
+                            'Lass uns die 5-Sinne-Erdung machen',
+                            'Ich habe riesige innere Unruhe & Frust',
+                            'Wie funktioniert der Kälte-Skill?',
+                            'Ich will mir einfach etwas von der Seele schreiben'
+                        ]
+                    };
+                } else {
+                    return {
+                        text: `${base}\n\n🌱 Dein Befinden wirkt im grünen Bereich. Eine stabile Phase ist der ideale Moment, um deine Routinen zu festigen und achtsam zu bleiben.\n\nFür dein Ziel: **"${goal}"**: Was hat dir in den letzten Tagen besonders geholfen, deine Balance zu wahren?`,
+                        suggestions: [
+                            'Regelmäßige Schlafenszeiten einhalten',
+                            'Kurze Atemübung zur Entspannung',
+                            'Einfach kurz reflektieren'
+                        ]
+                    };
+                }
+            },
+
+            renderChatMessages() {
+                const container = document.getElementById('chat-messages-container');
+                container.innerHTML = '';
+                this.state.chatMessages.forEach(msg => {
+                    const row = document.createElement('div');
+                    row.className = `flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`;
+                    const formatted = msg.text
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\n\n/g, '<br><br>')
+                        .replace(/\n/g, '<br>');
+
+                    row.innerHTML = `
+                        <div class="max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 text-xs sm:text-sm leading-relaxed shadow-md ${
+                            msg.sender === 'user'
+                                ? 'bg-teal-600 text-white rounded-tr-sm'
+                                : 'bg-slate-800/90 text-slate-200 border border-slate-700/80 rounded-tl-sm'
+                        }">
+                            <div>${formatted}</div>
+                        </div>
+                    `;
+                    container.appendChild(row);
+                });
+                container.scrollTop = container.scrollHeight;
+            },
+
+            renderQuickReplies(suggestions = []) {
+                const container = document.getElementById('chat-quick-replies');
+                container.innerHTML = '';
+                suggestions.forEach(text => {
+                    const btn = document.createElement('button');
+                    btn.className = "whitespace-nowrap px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-teal-300 hover:text-white transition font-medium shrink-0";
+                    btn.textContent = text;
+                    btn.onclick = () => this.sendChatMessage(text);
+                    container.appendChild(btn);
+                });
+            },
+
+            async sendChatMessage(predefinedText) {
+                const input = document.getElementById('chat-input');
+                const text = (predefinedText || input.value).trim();
+                if (!text || this.state.isAiLoading) return;
+                input.value = '';
+                this.renderQuickReplies([]);
+
+                const userMsg = { sender: 'user', text };
+                this.state.chatMessages.push(userMsg);
+                this.appendMessageToActiveSession(userMsg);
+                this.renderChatMessages();
+
+                this.state.isAiLoading = true;
+                const container = document.getElementById('chat-messages-container');
+                const typingEl = document.createElement('div');
+                typingEl.id = 'typing-indicator';
+                typingEl.className = "flex items-center space-x-2 text-slate-400 text-xs py-2 px-3";
+                typingEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-teal-400 animate-ping"></span><span>AuraMind reflektiert deine Situation...</span>`;
+                container.appendChild(typingEl);
+                container.scrollTop = container.scrollHeight;
+
+                let assistantReply = '';
+                let suggestions = [];
+
+                if (this.state.adminConfig.apiKey) {
+                    try {
+                        const res = await this.callGeminiApi(text, this.state.chatMessages);
+                        assistantReply = res.text;
+                        suggestions = res.suggestions;
+                    } catch(err) {
+                        const fallback = this.simulateExpertCoaching(text);
+                        assistantReply = `*(Lokaler Coach-Modus – Hinweis: API Fehler: ${err.message})*\n\n` + fallback.text;
+                        suggestions = fallback.suggestions;
+                    }
+                } else {
+                    await new Promise(r => setTimeout(r, 650));
+                    const fallback = this.simulateExpertCoaching(text);
+                    assistantReply = fallback.text;
+                    suggestions = fallback.suggestions;
+                }
+
+                const indicator = document.getElementById('typing-indicator');
+                if (indicator) indicator.remove();
+
+                const assistantMsg = { sender: 'assistant', text: assistantReply };
+                this.state.chatMessages.push(assistantMsg);
+                this.appendMessageToActiveSession(assistantMsg);
+                this.state.isAiLoading = false;
+
+                this.renderChatMessages();
+                this.renderQuickReplies(suggestions);
+            },
+
+            appendMessageToActiveSession(msg) {
+                if (!this.state.currentUser || !this.state.currentSessionId) return;
+                const sess = this.state.currentUser.sessions.find(s => s.id === this.state.currentSessionId);
+                if (sess) sess.messages.push(msg);
+                this.persist();
+            },
+
+            async callGeminiApi(promptText, history) {
+                const apiKey = this.state.adminConfig.apiKey;
+                const model = this.state.adminConfig.systemModel || 'gemini-3-flash-preview';
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+                const user = this.state.currentUser;
+                const systemPrompt = `Du bist AuraMind, ein empathischer, traumainformierter und verhaltenstherapeutisch geschulter Mental-Health-Coach für Menschen mit extremen Stimmungsschwankungen (Hypomanie, Manie, bipolare Depression, Mischzustände).
+Klientendaten:
+- Name: ${user?.name || 'Klient'}
+- Alter: ${user?.age || 'Nicht angegeben'}
+- Zivilstand: ${user?.civilStatus || 'Nicht angegeben'}
+- Wohnort: ${user?.location || 'Nicht angegeben'}
+- Erkanntes Profil: ${this.state.currentProfile?.title || 'Check-in aktiv'}
+- Gewähltes Stabilisierungsziel: ${this.state.selectedGoal}
+
+Wichtige Regeln:
+1. Validiere Gefühle warmherzig, ohne zu pathologisieren.
+2. Bei Manie: Tempo drosseln, 48h-Kaufstopps durchsetzen, Reize abschalten, Schlaf verteidigen.
+3. Bei Depression: Radikale 1%-Mikroschritte, Schuldgefühle nehmen, keine Überforderung.
+4. Bei Mischzuständen: Kältereize (DBT Tauchreflex), 5-Sinne-Erdung, Deeskalation.
+5. Halte Antworten prägnant (maximal 2-3 kurze Absätze).
+6. Antworte ausschließlich als valides JSON mit den Schlüsseln: "reply" (String) und "suggestions" (Array von 2-4 kurzen Kurzantworten für den Klienten).`;
+
+                const contents = history.slice(-6).map(m => ({
+                    role: m.sender === 'user' ? 'user' : 'model',
+                    parts: [{ text: m.text }]
+                }));
+
+                const payload = {
+                    contents: contents,
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                    generationConfig: { responseMimeType: "application/json" }
+                };
+
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) throw new Error(`Status ${res.status}`);
+                const data = await res.json();
+                const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                const parsed = JSON.parse(raw);
+                return {
+                    text: parsed.reply || 'Ich bin da. Lass uns gemeinsam den nächsten kleinen Schritt gehen.',
+                    suggestions: parsed.suggestions || ['Weiter sprechen', 'Atemübung', 'DBT-Skill']
+                };
+            },
+
+            simulateExpertCoaching(input) {
+                const text = input.toLowerCase();
+                const tendency = this.state.currentProfile?.tendency || 'balanced';
+
+                if (text.includes('kauf') || text.includes('shopping') || text.includes('geld') || text.includes('bestell')) {
+                    return {
+                        text: `🛑 **Hier greift sofort deine 48-Stunden-Kaufregel:**\n\n1. Schließe jetzt unverzüglich alle offenen Shopping-Tabs.\n2. Schreibe den Artikel mit Datum und Uhrzeit auf einen Zettel, statt ihn in den Warenkorb zu legen.\n3. Wenn du in genau 48 Stunden noch denselben Wunsch verspürst, prüfen wir das in Ruhe.\n\nKannst du dein Smartphone für die nächsten 20 Minuten weglegen?`,
+                        suggestions: ['Ja, ich lege das Handy weg', 'Es fällt mir sehr schwer', 'Ich gehe kurz an die frische Luft']
+                    };
+                }
+
+                if (text.includes('atem') || text.includes('4-7-8') || text.includes('panik') || text.includes('druck')) {
+                    this.openModal('modal-breathing');
+                    return {
+                        text: `Ich habe dir die **4-7-8 Atemregulation** geöffnet. Atme sanft 4 Sekunden durch die Nase ein, halte 7 Sekunden und atme 8 Sekunden durch den Mund aus. Das senkt direkt deinen Puls.\n\nWie fühlt sich dein Brustkorb nach 3 Runden an?`,
+                        suggestions: ['Etwas ruhiger geworden', 'Mein Kopf kreist noch immer', 'Ich brauche den Kälte-Skill']
+                    };
+                }
+
+                if (text.includes('bett') || text.includes('lähm') || text.includes('komme nicht hoch') || text.includes('schwer')) {
+                    return {
+                        text: `Dass du im Bett liegst, ist kein Versagen, sondern ein Schutzreflex deines Körpers vor Erschöpfung.\n\nUnser **1%-Mikroschritt** lautet:\n👉 **Bewege nur sanft deine Zehen und nimm zwei Schlucke Wasser**, falls etwas zu trinken in Reichweite steht.\n\nSchaffst du diese zwei Schlucke?`,
+                        suggestions: ['Wasser getrunken', 'Ich schaffe nicht mal das', 'Meine Gedanken verurteilen mich']
+                    };
+                }
+
+                if (text.includes('wut') || text.includes('unruhe') || text.includes('kälte') || text.includes('eis')) {
+                    return {
+                        text: `Bei extremer Anspannung hilft der **DBT-Tauchreflex**:\n\nHalte deine Handgelenke für 30 Sekunden unter eiskaltes fließendes Wasser oder kühle dein Gesicht mit einem kalten Waschlappen. Das zwingt das vegetative Nervensystem sofort zur Beruhigung.\n\nGib mir kurz Rückmeldung, wenn du das Kaltwasser getestet hast.`,
+                        suggestions: ['Kaltes Wasser hat geholfen', 'Ich brauche noch die 5-Sinne-Übung', 'Bin immer noch getrieben']
+                    };
+                }
+
+                if (tendency === 'mania') {
+                    return {
+                        text: `In einer Beschleunigungsphase scheint alles extrem dringend. Genau hier liegt jedoch das Risiko der Überreizung.\n\nLass uns das Tempo halbieren: Dimme das Licht im Zimmer und mach dir ein beruhigendes Getränk (z. B. warmen Tee). Was kannst du jetzt sofort tun?`,
+                        suggestions: ['Ich dimme das Licht', 'Ich mache mir einen Tee', 'Ich brauche eine Atemübung']
+                    };
+                } else if (tendency === 'depression') {
+                    return {
+                        text: `Danke für deine Offenheit. Du musst heute niemanden beeindrucken. Wir nehmen jeden Leistungsdruck heraus.\n\nWollen wir gemeinsam eine Sache festlegen, die du heute ganz bewusst unerledigt liegen lassen darfst?`,
+                        suggestions: ['Ich lasse die Arbeit liegen', 'Ich erlaube mir heute Pause', 'Hilf mir mich abzulenken']
+                    };
+                } else if (tendency === 'mixed') {
+                    return {
+                        text: `Ich verstehe die Zerrissenheit. Lass uns deinen Fokus auf die reale Umgebung lenken: Nenne mir 3 Gegenstände, die du gerade in deinem Raum sehen kannst.`,
+                        suggestions: ['Lampe, Buch, Fenster', 'Ich spüre den harten Boden', 'Lass uns die 4-7-8 Atmung machen']
+                    };
+                }
+
+                return {
+                    text: `Ein sehr guter Gedanke. Konsistente Routinen sind das stabilste Fundament gegen künftige Schwankungen.\n\nWelche gesunde Gewohnheit möchtest du heute besonders pflegen?`,
+                    suggestions: ['Feste Schlafenszeit heute', 'Ausgewogene Mahlzeit kochen', 'Spaziergang an der Luft']
+                };
+            },
+
+            renderHistory() {
+                const container = document.getElementById('history-list-container');
+                const user = this.state.currentUser;
+                if (!user || !user.sessions || user.sessions.length === 0) {
+                    container.innerHTML = `
+                        <div class="p-8 text-center rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                            <span class="text-3xl">🧠</span>
+                            <p class="text-sm text-slate-400">Bisher wurden noch keine Coaching-Sitzungen aufgezeichnet.</p>
+                            <button onclick="app.switchTab('coach'); app.showCoachStep('assessment');" class="px-4 py-2 rounded-xl bg-teal-500 text-slate-950 font-bold text-xs hover:bg-teal-400 transition">
+                                Jetzt ersten Check-in starten →
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = '';
+                user.sessions.forEach(sess => {
+                    const card = document.createElement('div');
+                    card.className = "p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 shadow-lg";
+                    
+                    let dialogHtml = '';
+                    sess.messages?.forEach(m => {
+                        dialogHtml += `
+                            <div class="p-2.5 rounded-xl text-xs ${m.sender === 'user' ? 'bg-teal-950/40 border border-teal-800/60 text-teal-200 ml-4' : 'bg-slate-800/60 border border-slate-700/60 text-slate-300 mr-4'}">
+                                <span class="font-bold text-[10px] block opacity-70 mb-0.5">${m.sender === 'user' ? 'Du' : 'AuraMind Coach'}:</span>
+                                ${m.text}
+                            </div>
+                        `;
+                    });
+
+                    card.innerHTML = `
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs font-mono text-teal-400">${sess.date}</span>
+                                <span class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-200 border border-slate-700 font-semibold">
+                                    ${sess.title}
+                                </span>
+                            </div>
+                            <span class="text-[11px] text-slate-400">${sess.messages?.length || 0} Nachrichten</span>
+                        </div>
+                        <div class="text-xs text-slate-300">
+                            <strong>Gewähltes Ziel:</strong> <span class="text-teal-300">${sess.goal}</span>
+                        </div>
+                        <div class="space-y-2 pt-1">
+                            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Dialog-Protokoll:</div>
+                            <div class="space-y-2 max-h-56 overflow-y-auto pr-1">${dialogHtml}</div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            },
+
+            renderProfileForm() {
+                const user = this.state.currentUser;
+                if (!user) return;
+                document.getElementById('profile-name').value = user.name || '';
+                document.getElementById('profile-email').value = user.email || '';
+                document.getElementById('profile-age').value = user.age || '';
+                document.getElementById('profile-civil-status').value = user.civilStatus || 'Ledig';
+                document.getElementById('profile-location').value = user.location || '';
+                document.getElementById('profile-emergency-contact').value = user.emergencyContact || '';
+                document.getElementById('profile-notes').value = user.notes || '';
+            },
+
+            saveProfile() {
+                if (!this.state.currentUser) return;
+                this.state.currentUser.name = document.getElementById('profile-name').value.trim();
+                this.state.currentUser.age = parseInt(document.getElementById('profile-age').value, 10) || null;
+                this.state.currentUser.civilStatus = document.getElementById('profile-civil-status').value;
+                this.state.currentUser.location = document.getElementById('profile-location').value.trim();
+                this.state.currentUser.emergencyContact = document.getElementById('profile-emergency-contact').value.trim();
+                this.state.currentUser.notes = document.getElementById('profile-notes').value.trim();
+
+                this.persist();
+                this.showToast('Profildaten erfolgreich gespeichert!');
+            },
+
+            renderAdminTab() {
+                const isAuth = this.state.isAdminAuthenticated;
+                document.getElementById('admin-login-view').classList.toggle('hidden', isAuth);
+                document.getElementById('admin-dashboard-view').classList.toggle('hidden', !isAuth);
+
+                if (isAuth) {
+                    document.getElementById('admin-api-key').value = this.state.adminConfig.apiKey || '';
+                    document.getElementById('admin-pin-change').value = this.state.adminConfig.adminPin || 'admin2026';
+
+                    const tbody = document.getElementById('admin-user-tbody');
+                    tbody.innerHTML = '';
+                    this.state.users.forEach(u => {
+                        const tr = document.createElement('tr');
+                        tr.className = "hover:bg-slate-850/50";
+                        tr.innerHTML = `
+                            <td class="py-2.5 px-3 font-bold text-white">${u.name}</td>
+                            <td class="py-2.5 px-3 text-slate-300">${u.age || '-'}</td>
+                            <td class="py-2.5 px-3 text-slate-300">${u.civilStatus}</td>
+                            <td class="py-2.5 px-3 text-slate-300">${u.location}</td>
+                            <td class="py-2.5 px-3">
+                                <span class="px-2 py-0.5 rounded-full bg-slate-800 text-teal-300 text-[11px]">${u.sessions?.length || 0}</span>
+                            </td>
+                            <td class="py-2.5 px-3">
+                                <button onclick="app.adminSwitchToUser('${u.id}')" class="text-teal-400 hover:underline text-[11px]">
+                                    Einloggen
+                                </button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            },
+
+            loginAdmin() {
+                const pin = document.getElementById('admin-pin-input').value.trim();
+                if (pin === this.state.adminConfig.adminPin) {
+                    this.state.isAdminAuthenticated = true;
+                    document.getElementById('admin-pin-input').value = '';
+                    this.renderAdminTab();
+                    this.showToast('Admin-Zugang gewährt.');
+                } else {
+                    this.showToast('Falsche Admin-PIN.');
+                }
+            },
+
+            logoutAdmin() {
+                this.state.isAdminAuthenticated = false;
+                this.renderAdminTab();
+                this.showToast('Admin abgemeldet.');
+            },
+
+            saveAdminConfig() {
+                this.state.adminConfig.apiKey = document.getElementById('admin-api-key').value.trim();
+                this.state.adminConfig.adminPin = document.getElementById('admin-pin-change').value.trim() || 'admin2026';
+                this.persist();
+                this.showToast('Admin-Konfiguration gespeichert.');
+            },
+
+            async testAdminApiKey() {
+                const key = document.getElementById('admin-api-key').value.trim();
+                if (!key) {
+                    this.showToast('Bitte zuerst einen API-Schlüssel eingeben.');
+                    return;
+                }
+                this.showToast('Teste Verbindung zu Google Gemini...');
+                try {
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${key}`;
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: 'Ping status' }] }] })
+                    });
+                    if (res.ok) {
+                        this.showToast('✅ Gemini API-Schlüssel ist gültig und aktiv!');
+                    } else {
+                        const errData = await res.json().catch(() => ({}));
+                        this.showToast(`❌ API-Fehler (${res.status}): ${errData.error?.message || 'Ungültig'}`);
+                    }
+                } catch(e) {
+                    this.showToast('❌ Netzwerkfehler beim Verbindungstest.');
+                }
+            },
+
+            adminSwitchToUser(userId) {
+                const u = this.state.users.find(x => x.id === userId);
+                if (u) {
+                    this.state.currentUser = u;
+                    this.switchTab('coach');
+                    this.showCoachStep('assessment');
+                    this.showToast(`Eingeloggt als ${u.name}`);
+                }
+            },
+
+            setAuthMode(mode) {
+                const isLogin = mode === 'login';
+                document.getElementById('auth-form-login').classList.toggle('hidden', !isLogin);
+                document.getElementById('auth-form-register').classList.toggle('hidden', isLogin);
+                document.getElementById('auth-heading').textContent = isLogin ? 'Willkommen bei AuraMind' : 'Neues Konto erstellen';
+
+                document.getElementById('auth-tab-login').className = `flex-1 py-2 rounded-lg font-bold transition ${isLogin ? 'bg-teal-500 text-slate-950' : 'text-slate-400 hover:text-white'}`;
+                document.getElementById('auth-tab-register').className = `flex-1 py-2 rounded-lg font-bold transition ${!isLogin ? 'bg-teal-500 text-slate-950' : 'text-slate-400 hover:text-white'}`;
+            },
+
+            handleLogin() {
+                const email = document.getElementById('auth-login-email').value.trim().toLowerCase();
+                const pass = document.getElementById('auth-login-password').value;
+
+                const found = this.state.users.find(u => u.email.toLowerCase() === email && u.password === pass);
+                if (found) {
+                    this.state.currentUser = found;
+                    this.switchTab('coach');
+                    this.showCoachStep('assessment');
+                    this.showToast(`Willkommen zurück, ${found.name}!`);
+                } else {
+                    this.showToast('Ungültige E-Mail-Adresse oder falsches Passwort.');
+                }
+            },
+
+            handleRegister() {
+                const name = document.getElementById('auth-reg-name').value.trim();
+                const email = document.getElementById('auth-reg-email').value.trim();
+                const pass = document.getElementById('auth-reg-password').value;
+                const age = parseInt(document.getElementById('auth-reg-age').value, 10) || 30;
+                const civil = document.getElementById('auth-reg-civil-status').value;
+                const loc = document.getElementById('auth-reg-location').value.trim();
+
+                if (!name || !email || !pass) {
+                    this.showToast('Bitte alle Pflichtfelder ausfüllen.');
+                    return;
+                }
+
+                if (this.state.users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+                    this.showToast('Diese E-Mail ist bereits registriert.');
+                    return;
+                }
+
+                const newUser = {
+                    id: `usr-${Date.now()}`,
+                    name,
+                    email,
+                    password: pass,
+                    age,
+                    civilStatus: civil,
+                    location: loc || 'Nicht angegeben',
+                    emergencyContact: '',
+                    notes: '',
+                    sessions: []
+                };
+
+                this.state.users.push(newUser);
+                this.state.currentUser = newUser;
+                this.persist();
+                this.switchTab('coach');
+                this.showCoachStep('assessment');
+                this.showToast(`Konto für ${newUser.name} erstellt!`);
+            },
+
+            renderDemoUsers() {
+                const row = document.getElementById('demo-users-row');
+                row.innerHTML = '';
+                this.state.users.slice(0, 2).forEach(u => {
+                    const btn = document.createElement('button');
+                    btn.className = "px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-750 border border-slate-700 text-teal-300 text-xs transition";
+                    btn.textContent = `${u.name.split(' ')[0]} (${u.location})`;
+                    btn.onclick = () => {
+                        this.state.currentUser = u;
+                        this.switchTab('coach');
+                        this.showCoachStep('assessment');
+                        this.showToast(`Angemeldet als ${u.name}`);
+                    };
+                    row.appendChild(btn);
+                });
+            },
+
+            toggleBreathingExercise() {
+                if (this.state.breathingRunning) {
+                    this.stopBreathing();
+                    document.getElementById('breathing-toggle-btn').textContent = "Übung fortsetzen";
+                } else {
+                    this.startBreathing();
+                    document.getElementById('breathing-toggle-btn').textContent = "Übung pausieren";
+                }
+            },
+
+            startBreathing() {
+                this.state.breathingRunning = true;
+                this.state.breathingPhase = 0;
+                this.state.breathingCountdown = 4;
+                this.updateBreathingCircle();
+
+                if (this.state.breathingTimer) clearInterval(this.state.breathingTimer);
+                this.state.breathingTimer = setInterval(() => {
+                    this.state.breathingCountdown--;
+                    if (this.state.breathingCountdown <= 0) {
+                        if (this.state.breathingPhase === 0) {
+                            this.state.breathingPhase = 1;
+                            this.state.breathingCountdown = 7;
+                        } else if (this.state.breathingPhase === 1) {
+                            this.state.breathingPhase = 2;
+                            this.state.breathingCountdown = 8;
+                        } else {
+                            this.state.breathingPhase = 0;
+                            this.state.breathingCountdown = 4;
+                        }
+                    }
+                    this.updateBreathingCircle();
+                }, 1000);
+            },
+
+            updateBreathingCircle() {
+                const circle = document.getElementById('breathing-circle');
+                const counter = document.getElementById('breathing-counter');
+                const label = document.getElementById('breathing-phase-label');
+                const sub = document.getElementById('breathing-phase-sub');
+
+                counter.textContent = this.state.breathingCountdown;
+                if (this.state.breathingPhase === 0) {
+                    label.textContent = "Einatmen (durch die Nase)";
+                    sub.textContent = "Tief in den Bauchraum atmen (4s)";
+                    circle.style.transform = "scale(1.5)";
+                    circle.style.backgroundColor = "rgba(20, 184, 166, 0.35)";
+                    circle.style.borderColor = "rgb(45, 212, 191)";
+                } else if (this.state.breathingPhase === 1) {
+                    label.textContent = "Atem entspannt anhalten";
+                    sub.textContent = "Keine Anspannung im Halsbereich (7s)";
+                    circle.style.transform = "scale(1.5)";
+                    circle.style.backgroundColor = "rgba(168, 85, 247, 0.35)";
+                    circle.style.borderColor = "rgb(192, 132, 252)";
+                } else {
+                    label.textContent = "Vollständig ausatmen (Mund)";
+                    sub.textContent = "Mit weichem Rauschen ausatmen (8s)";
+                    circle.style.transform = "scale(0.9)";
+                    circle.style.backgroundColor = "rgba(20, 184, 166, 0.1)";
+                    circle.style.borderColor = "rgba(20, 184, 166, 0.4)";
+                }
+            },
+
+            stopBreathing() {
+                this.state.breathingRunning = false;
+                if (this.state.breathingTimer) {
+                    clearInterval(this.state.breathingTimer);
+                    this.state.breathingTimer = null;
+                }
+            },
+
+            openModal(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    if (modalId === 'modal-sos' && this.state.currentUser?.emergencyContact) {
+                        document.getElementById('sos-personal-contact-box').classList.remove('hidden');
+                        document.getElementById('sos-personal-contact-val').textContent = this.state.currentUser.emergencyContact;
+                    }
+                }
+            },
+
+            closeModal(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    if (modalId === 'modal-breathing') this.stopBreathing();
+                }
+            }
+        };
+
+        // Initialize application on DOM ready
+        window.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+    </script>
+</body>
+</html>

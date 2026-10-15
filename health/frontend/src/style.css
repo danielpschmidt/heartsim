@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: rgb(var(--c-slate-900) / 0.6);
+}
+::-webkit-scrollbar-thumb {
+    background: rgb(var(--c-slate-600) / 0.5);
+    border-radius: 9999px;
+}
+.breathe-anim {
+    transition: transform 4s cubic-bezier(0.4, 0, 0.2, 1), background-color 2s ease, border-color 2s ease;
+}
+
+/* Theme-Schalter zeigt jeweils das Symbol des anderen Modus. */
+html.light .theme-icon-dark,
+html:not(.light) .theme-icon-light {
+    display: none;
+}
+
+/* Screenshots auf der Homepage: jeweils die Variante zum aktiven Theme zeigen. */
+html.light .shot-dark,
+html:not(.light) .shot-light {
+    display: none;
+}

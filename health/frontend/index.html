@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <!-- Google Consent Mode v2: alles standardmässig abgelehnt. gtag.js wird erst
+         nach ausdrücklicher Einwilligung geladen (siehe src/consent.js). -->
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('consent', 'default', {
+            ad_storage: 'denied',
+            ad_user_data: 'denied',
+            ad_personalization: 'denied',
+            analytics_storage: 'denied',
+            functionality_storage: 'denied',
+            personalization_storage: 'denied',
+            security_storage: 'granted'
+        });
+        gtag('set', 'ads_data_redaction', true);
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraMind – Begleitung bei Stimmungsschwankungen</title>
+    <meta name="description" content="AuraMind begleitet dich bei Übererregung, Erschöpfung und Mischzuständen: kurzer Check-in, passende Skills aus KVT und DBT, Stimmungs-Tracking, Sicherheitsplan und SOS – gehostet in der Schweiz.">
+    <link rel="canonical" href="https://auramind.dpschmidt.ch/">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="de_CH">
+    <meta property="og:title" content="AuraMind – Begleitung bei Stimmungsschwankungen">
+    <meta property="og:description" content="Check-in, Coach, Tracking, Notfall-Skills und Sicherheitsplan – für die schwierigen Stunden zwischen den Terminen.">
+    <meta property="og:url" content="https://auramind.dpschmidt.ch/">
+    <meta property="og:image" content="https://auramind.dpschmidt.ch/home/chat-dark.jpg">
+    <script>
+        // Theme vor dem ersten Rendern setzen, damit beim Laden nichts aufblitzt.
+        (function () {
+            var theme = null;
+            try { theme = localStorage.getItem('auramind_theme'); } catch (e) { /* ignore */ }
+            if (theme !== 'light' && theme !== 'dark') {
+                theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+            }
+            document.documentElement.classList.add(theme);
+        })();
+    </script>
+</head>
+
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-teal-500 selection:text-slate-950">
+
+    <a href="#inhalt" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 px-3 py-2 rounded-lg bg-teal-500 text-slate-950 text-xs font-bold">Zum Inhalt springen</a>
+
+    <!-- ================= HEADER ================= -->
+    <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 sm:px-6">
+        <div class="max-w-6xl mx-auto flex items-center justify-between gap-3">
+            <a href="/" class="flex items-center space-x-3 select-none">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-500 via-teal-400 to-emerald-400 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-teal-500/20" aria-hidden="true">☯</div>
+                <span class="text-base font-bold text-white tracking-tight">AuraMind</span>
+            </a>
+
+            <nav class="hidden md:flex items-center gap-6 text-xs font-medium text-slate-300" aria-label="Hauptnavigation">
+                <a href="#ablauf" class="hover:text-white transition">So funktioniert's</a>
+                <a href="#funktionen" class="hover:text-white transition">Funktionen</a>
+                <a href="#methoden" class="hover:text-white transition">Methoden</a>
+                <a href="#datenschutz" class="hover:text-white transition">Datenschutz</a>
+                <a href="#faq" class="hover:text-white transition">FAQ</a>
+            </nav>
+
+            <div class="flex items-center gap-2">
+                <button id="theme-toggle" onclick="home.toggleTheme()" class="px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-xs transition" title="Hell/Dunkel umschalten" aria-label="Hell/Dunkel umschalten">
+                    <span class="theme-icon-dark">☀️</span>
+                    <span class="theme-icon-light">🌙</span>
+                </button>
+                <a href="/app/" data-cta="login" class="hidden sm:inline-flex px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white transition">Anmelden</a>
+                <a href="/app/#register" data-cta="register" class="px-3 py-1.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-bold transition">Konto erstellen</a>
+                <button id="mobile-nav-btn" onclick="home.toggleMobileNav()" class="md:hidden px-2.5 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs" aria-label="Menü" aria-expanded="false" aria-controls="mobile-nav">☰</button>
+            </div>
+        </div>
+        <nav id="mobile-nav" class="hidden md:hidden max-w-6xl mx-auto pt-3 pb-1 grid gap-1 text-sm text-slate-300" aria-label="Mobile Navigation">
+            <a href="#ablauf" class="px-2 py-2 rounded-lg hover:bg-slate-800">So funktioniert's</a>
+            <a href="#funktionen" class="px-2 py-2 rounded-lg hover:bg-slate-800">Funktionen</a>
+            <a href="#methoden" class="px-2 py-2 rounded-lg hover:bg-slate-800">Methoden</a>
+            <a href="#datenschutz" class="px-2 py-2 rounded-lg hover:bg-slate-800">Datenschutz</a>
+            <a href="#faq" class="px-2 py-2 rounded-lg hover:bg-slate-800">FAQ</a>
+            <a href="/app/" data-cta="login" class="px-2 py-2 rounded-lg hover:bg-slate-800 font-bold">Anmelden</a>
+        </nav>
+    </header>
+
+    <main id="inhalt" class="flex-1">
+
+        <!-- ================= HERO ================= -->
+        <section class="relative overflow-hidden px-4 sm:px-6 pt-14 pb-16 sm:pt-20">
+            <div class="absolute inset-0 -z-10 pointer-events-none" aria-hidden="true">
+                <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[48rem] h-[48rem] max-w-[160vw] rounded-full bg-teal-500/10 blur-3xl"></div>
+            </div>
+            <div class="max-w-6xl mx-auto grid lg:grid-cols-[1fr_1.15fr] gap-12 items-center">
+                <div class="space-y-6">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-950 border border-teal-800 text-teal-300 text-[12px] font-semibold">
+                        <span aria-hidden="true">🇨🇭</span> Selbsthilfe-Begleiter · gehostet in der Schweiz
+                    </div>
+                    <h1 class="text-4xl sm:text-5xl font-extrabold text-white tracking-tight leading-[1.1]">
+                        Halt finden, wenn die Stimmung <span class="text-teal-400">kippt</span>.
+                    </h1>
+                    <p class="text-base sm:text-lg text-slate-300 leading-relaxed">
+                        AuraMind begleitet dich bei Übererregung, Erschöpfung und Mischzuständen – mit einem kurzen Check-in, einem Coach, der zu deinem Zustand passt, erprobten Notfall-Skills und einem Stimmungstagebuch, das Frühwarnzeichen sichtbar macht.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <a href="/app/#register" data-cta="register" class="inline-flex justify-center px-6 py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-sm transition shadow-lg shadow-teal-500/20">Konto erstellen →</a>
+                        <a href="#ablauf" class="inline-flex justify-center px-6 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-white font-bold text-sm transition">So funktioniert's</a>
+                    </div>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Kein Ersatz für Therapie. In einer akuten Krise: <a href="tel:144" class="font-bold text-rose-300 hover:text-rose-200">144</a> (Notruf) oder <a href="tel:143" class="font-bold text-rose-300 hover:text-rose-200">143</a> (Die Dargebotene Hand).
+                    </p>
+                </div>
+                <div>
+                <img src="/home/chat-dark.jpg" width="976" height="689" alt="Chat mit dem AuraMind-Coach: Begrüssung und Erklärung des Kälte-Skills" fetchpriority="high" decoding="async" class="shot-dark w-full h-auto rounded-2xl border border-slate-800 shadow-2xl shadow-black/30 ">
+                <img src="/home/chat-light.jpg" width="976" height="689" alt="Chat mit dem AuraMind-Coach: Begrüssung und Erklärung des Kälte-Skills" fetchpriority="high" decoding="async" class="shot-light w-full h-auto rounded-2xl border border-slate-800 shadow-2xl shadow-black/30 ">
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= FÜR WEN ================= -->
+        <section class="px-4 sm:px-6 py-14 border-t border-slate-800 bg-slate-900/40">
+            <div class="max-w-6xl mx-auto space-y-8">
+                <div class="max-w-2xl space-y-3">
+                    <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Für die Stunden zwischen den Terminen</h2>
+                    <p class="text-sm sm:text-base text-slate-300 leading-relaxed">Starke Stimmungsschwankungen halten sich nicht an Sprechstunden. AuraMind ist für Menschen gemacht, die solche Phasen kennen – und im Moment selbst etwas Konkretes tun möchten.</p>
+                </div>
+                <div class="grid sm:grid-cols-3 gap-4">
+                    <div class="p-5 rounded-2xl bg-slate-900 border border-amber-500/30 space-y-2">
+                        <div class="text-sm font-bold text-amber-300">⚡ Übererregung</div>
+                        <p class="text-xs text-slate-300 leading-relaxed">Kaum Schlaf, rasende Gedanken, Kaufdrang oder riskante Ideen. Ziel: Reize drosseln, Impulse aufschieben, Schlaf schützen.</p>
+                    </div>
+                    <div class="p-5 rounded-2xl bg-slate-900 border border-indigo-500/30 space-y-2">
+                        <div class="text-sm font-bold text-indigo-300">🌧️ Erschöpfung</div>
+                        <p class="text-xs text-slate-300 leading-relaxed">Bleischwere, Rückzug, Selbstvorwürfe. Ziel: winzige 1-%-Schritte ohne Leistungsdruck und Grübelschleifen unterbrechen.</p>
+                    </div>
+                    <div class="p-5 rounded-2xl bg-slate-900 border border-purple-500/30 space-y-2">
+                        <div class="text-sm font-bold text-purple-300">🌪️ Mischzustand</div>
+                        <p class="text-xs text-slate-300 leading-relaxed">Getrieben und gleichzeitig niedergeschlagen oder extrem gereizt. Ziel: körperliche Notbremsen und Deeskalation.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= ABLAUF ================= -->
+        <section id="ablauf" class="scroll-mt-20 px-4 sm:px-6 py-16 border-t border-slate-800">
+            <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+                <div class="space-y-8">
+                    <div class="space-y-3">
+                        <div class="text-xs font-bold uppercase tracking-wider text-teal-400">So funktioniert's</div>
+                        <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">In drei Schritten von „zu viel“ zu einem nächsten Schritt</h2>
+                    </div>
+                    <ol class="space-y-6">
+                        <li class="flex gap-4">
+                            <span class="w-9 h-9 shrink-0 rounded-xl bg-teal-500 text-slate-950 font-black flex items-center justify-center">1</span>
+                            <div class="space-y-1">
+                                <h3 class="text-sm font-bold text-white">Check-in ohne Selbstdiagnose</h3>
+                                <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">Vier kurze Fragen zu deinen letzten 24–48 Stunden: Energie und Schlaf, Gedanken, Verhalten, Körpersignale. Daraus ergibt sich automatisch, ob eher Übererregung, Erschöpfung, ein Mischzustand oder eine stabile Phase vorliegt.</p>
+                            </div>
+                        </li>
+                        <li class="flex gap-4">
+                            <span class="w-9 h-9 shrink-0 rounded-xl bg-teal-500 text-slate-950 font-black flex items-center justify-center">2</span>
+                            <div class="space-y-1">
+                                <h3 class="text-sm font-bold text-white">Ein passendes Ziel wählen</h3>
+                                <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">AuraMind schlägt dir drei Stabilisierungsziele vor, die zu deinem Zustand passen – oder du formulierst dein eigenes Anliegen.</p>
+                            </div>
+                        </li>
+                        <li class="flex gap-4">
+                            <span class="w-9 h-9 shrink-0 rounded-xl bg-teal-500 text-slate-950 font-black flex items-center justify-center">3</span>
+                            <div class="space-y-1">
+                                <h3 class="text-sm font-bold text-white">Mit dem Coach daran arbeiten</h3>
+                                <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">Der Coach begleitet dich Schritt für Schritt, schlägt Übungen vor und merkt sich deine Sitzung, damit du später weitermachen kannst.</p>
+                            </div>
+                        </li>
+                    </ol>
+                </div>
+                <div class="flex justify-center">
+                    <div class="w-full max-w-xl">
+                <img src="/home/goals-dark.jpg" width="672" height="707" alt="Ergebnis des Check-ins „Agitierter Mischzustand“ mit drei vorgeschlagenen Stabilisierungszielen" loading="lazy" decoding="async" class="shot-dark w-full h-auto rounded-2xl border border-slate-800 shadow-2xl shadow-black/30 ">
+                <img src="/home/goals-light.jpg" width="672" height="707" alt="Ergebnis des Check-ins „Agitierter Mischzustand“ mit drei vorgeschlagenen Stabilisierungszielen" loading="lazy" decoding="async" class="shot-light w-full h-auto rounded-2xl border border-slate-800 shadow-2xl shadow-black/30 ">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= FUNKTIONEN ================= -->
+        <section id="funktionen" class="scroll-mt-20 px-4 sm:px-6 py-16 border-t border-slate-800 bg-slate-900/40">
+            <div class="max-w-6xl mx-auto space-y-20">
+                <div class="max-w-2xl space-y-3">
+                    <div class="text-xs font-bold uppercase tracking-wider text-teal-400">Funktionen</div>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Alles an einem Ort – auch wenn wenig Kraft da ist</h2>
+                </div>
+
+        <div class="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+            <div class="space-y-4 ">
+                <div class="text-xs font-bold uppercase tracking-wider text-teal-400">Coach</div>
+                <h3 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Ein Gespräch, das zu deinem Zustand passt</h3>
+                <p class="text-sm sm:text-base text-slate-300 leading-relaxed">Nach dem Check-in begleitet dich der AuraMind-Coach durch dein gewähltes Ziel – in kurzen, konkreten Schritten statt langer Texte. Er kennt die Unterschiede zwischen Übererregung, Erschöpfung und Mischzuständen und schlägt jeweils andere Strategien vor.</p>
+                <ul class="space-y-2 text-sm text-slate-300">
+                        <li class="flex gap-2.5"><span class="text-teal-400 shrink-0">✓</span><span>Antwortvorschläge zum Antippen, wenn Schreiben gerade zu viel ist</span></li>
+                        <li class="flex gap-2.5"><span class="text-teal-400 shrink-0">✓</span><span>Atemübung (4-7-8) direkt aus dem Chat startbar</span></li>
+                        <li class="flex gap-2.5"><span class="text-teal-400 shrink-0">✓</span><span>Läuft mit einer lokalen KVT-Engine – optional mit KI-Unterstützung für freiere Antworten</span></li>
+                        <li class="flex gap-2.5"><span class="text-teal-400 shrink-0">✓</span><span>Alle Sitzungen bleiben in deinem Verlauf und lassen sich später weiterführen</span></li>
+                </ul>
+            </div>
+            <div class="flex justify-center">
+                <div class="w-full max-w-2xl">
+                <img src="/home/chat-dark.jpg" width="976" height="689" alt="Chat mit dem AuraMind-Coach: Begrüssung und Erklärung des Kälte-Skills" loading="lazy" decoding="async" class="shot-dark w-full h-auto rounded-2xl border border-slate-800 shadow-2xl shadow-black/30 ">
+                <img src="/home/chat-light.jpg" width="976" height="689" alt="Chat mit dem AuraMind-Coach: Begrüssung und Erklärung des Kälte-Skills" loading="lazy" decoding="async" class="shot-light w-full h-auto rounded-2xl border border-slate-800 shadow-2xl shadow-black/30 ">
+                </div>
+            </div>
+        </div>
+        <div class="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+            <div class="space-y-4 lg:order-2">
+                <div class="text-xs font-bold uppercase tracking-wider text-teal-400">Tracking</div>
+                <h3 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Stimmung, Schlaf und Rhythmus sichtbar machen</h3>
+                <p class="text-sm sm:text-base text-slate-300 leading-relaxed">Der tägliche Check-in dauert unter einer Minute. Über Wochen entsteht daraus ein Stimmungsverlauf nach der klinischen Life-Charting-Methode – das wichtigste Frühwarnsystem bei starken Stimmungsschwankungen.</p>
+                <ul class="space-y-2 text-sm text-slate-300">
+                        <li class="flex gap-2.5"><span class="text-teal-400 shrink-0">✓</span><span>Stimmung von −5 bis +5, Schlafdauer, Aufstehzeit, Reizbarkeit, Medikation, sozialer Kontakt</span></li>
+                        <li class="flex gap-2.5"><span class="text-teal-400 shrink-0">✓</span><span>Transparente Hinweise, z. B. bei drei Nächten Schlafmangel in Folge oder stark schwankenden Aufstehzeiten</span></li>
+                        <li class="flex gap-2.5"><span class="text-teal-400 shrink-0">✓</span><span>Mini-Aktivitäten (Behavioral Activation) mit Bewertung von Erfolg und Freude</span></li>
+                </ul>
+            </div>
+            <div class="flex justify-center">
+                <div class="w-full max-w-2xl">
+                <img src="/home/tracking-dark.jpg" width="768" height="403" alt="Täglicher Check-in mit Stimmungsregler, Schlaf, Aufstehzeit, Reizbarkeit und Medikation" loading="lazy" decoding="async" class="shot-dark w-full h-auto rounded-2xl border border-slate-800 shadow-2xl shadow-black/30 ">
+                <img src="/home/tracking-light.jpg" width="768" height="403" alt="Täglicher Check-in mit Stimmungsregler, Schlaf, Aufstehzeit, Reizbarkeit und Medikation" loading="lazy" decoding="async" class="shot-light w-full h-auto rounded-2xl border border-slate-800 shadow-2xl shadow-black/30 ">
+                </div>
+            </div>
+        </div>
+        <div class="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+            <div class="space-y-4 ">
+                <div class="text-xs font-bold uppercase tracking-wider text-teal-400">Notfallkoffer</div>
+                <h3 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Skills, die sofort wirken – auch ohne Internet-Suche</h3>
+                <p class="text-sm sm:text-base text-slate-300 leading-relaxed">Wenn der Kopf rast oder alles zu viel wird, helfen körperliche Notbremsen oft schneller als Nachdenken. Der Notfallkoffer ist mit einem Tipp aus jeder Ansicht erreichbar.</p>
+                <ul class="space-y-2 text-sm text-slate-300">
+                        <li class="flex gap-2.5"><span class="text-teal-400 shrink-0">✓</span><span>DBT-Tauchreflex (Kältereiz) und 5-4-3-2-1-Sinne-Erdung</span></li>
+                        <li class="flex gap-2.5"><span class="text-teal-400 shrink-0">✓</span><span>TIPP-Skill bei extremer Übererregung</span></li>
+                        <li class="flex gap-2.5"><span class="text-teal-400 shrink-0">✓</span><span>48-Stunden-Kaufregel gegen Impulskäufe</span></li>
+                        <li class="flex gap-2.5"><span class="text-teal-400 shrink-0">✓</span><span>DEAR MAN für angespannte Gespräche</span></li>
+                </ul>
+            </div>
+            <div class="flex justify-center">
+                <div class="w-full max-w-sm">
+                <img src="/home/tools-dark.jpg" width="448" height="774" alt="Notfallkoffer mit DBT-Tauchreflex, 5-4-3-2-1-Erdung, 48-Stunden-Kaufregel und TIPP-Skill" loading="lazy" decoding="async" class="shot-dark w-full h-auto rounded-2xl border border-slate-800 shadow-2xl shadow-black/30 ">
+                <img src="/home/tools-light.jpg" width="448" height="774" alt="Notfallkoffer mit DBT-Tauchreflex, 5-4-3-2-1-Erdung, 48-Stunden-Kaufregel und TIPP-Skill" loading="lazy" decoding="async" class="shot-light w-full h-auto rounded-2xl border border-slate-800 shadow-2xl shadow-black/30 ">
+                </div>
+            </div>
+        </div>
+        <div class="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+            <div class="space-y-4 lg:order-2">
+                <div class="text-xs font-bold uppercase tracking-wider text-teal-400">Sicherheitsplan</div>
+                <h3 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Vorsorgen, solange es dir gut geht</h3>
+                <p class="text-sm sm:text-base text-slate-300 leading-relaxed">Der persönliche Sicherheitsplan folgt dem Stanley-Brown-Modell (Safety Planning Intervention). Du füllst ihn in einer stabilen Phase aus – im Ernstfall ist er dann mit einem Tipp griffbereit.</p>
+                <ul class="space-y-2 text-sm text-slate-300">
+                        <li class="flex gap-2.5"><span class="text-teal-400 shrink-0">✓</span><span>Sechs Schritte: Warnzeichen, eigene Strategien, Ablenkung, Menschen, Fachstellen, sichere Umgebung</span></li>
+                        <li class="flex gap-2.5"><span class="text-teal-400 shrink-0">✓</span><span>Deine Warnzeichen fliessen in die Begleitung durch den Coach ein</span></li>
+                        <li class="flex gap-2.5"><span class="text-teal-400 shrink-0">✓</span><span>Jederzeit über das 🛡️-Symbol erreichbar</span></li>
+                </ul>
+            </div>
+            <div class="flex justify-center">
+                <div class="w-full max-w-sm">
+                <img src="/home/safety-dark.jpg" width="512" height="774" alt="Persönlicher Sicherheitsplan mit Feldern für Warnzeichen, Strategien und Kontakte" loading="lazy" decoding="async" class="shot-dark w-full h-auto rounded-2xl border border-slate-800 shadow-2xl shadow-black/30 ">
+                <img src="/home/safety-light.jpg" width="512" height="774" alt="Persönlicher Sicherheitsplan mit Feldern für Warnzeichen, Strategien und Kontakte" loading="lazy" decoding="async" class="shot-light w-full h-auto rounded-2xl border border-slate-800 shadow-2xl shadow-black/30 ">
+                </div>
+            </div>
+        </div>
+        <div class="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+            <div class="space-y-4 ">
+                <div class="text-xs font-bold uppercase tracking-wider text-teal-400">SOS</div>
+                <h3 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Hilfe ist immer nur einen Tipp entfernt</h3>
+                <p class="text-sm sm:text-base text-slate-300 leading-relaxed">Der rote SOS-Knopf ist in der App immer sichtbar. Er zeigt die wichtigsten Notrufnummern zum direkten Anrufen – und deinen eigenen Notfallkontakt, falls du einen hinterlegt hast.</p>
+                <ul class="space-y-2 text-sm text-slate-300">
+                        <li class="flex gap-2.5"><span class="text-teal-400 shrink-0">✓</span><span>144 / 112 – Notruf & Rettungsdienst</span></li>
+                        <li class="flex gap-2.5"><span class="text-teal-400 shrink-0">✓</span><span>143 – Die Dargebotene Hand (CH), rund um die Uhr und anonym</span></li>
+                        <li class="flex gap-2.5"><span class="text-teal-400 shrink-0">✓</span><span>0800 111 0 111 – TelefonSeelsorge (DE), kostenfrei</span></li>
+                </ul>
+            </div>
+            <div class="flex justify-center">
+                <div class="w-full max-w-sm">
+                <img src="/home/sos-dark.jpg" width="448" height="520" alt="SOS-Fenster mit Notrufnummern 144, 143 und TelefonSeelsorge" loading="lazy" decoding="async" class="shot-dark w-full h-auto rounded-2xl border border-slate-800 shadow-2xl shadow-black/30 ">
+                <img src="/home/sos-light.jpg" width="448" height="520" alt="SOS-Fenster mit Notrufnummern 144, 143 und TelefonSeelsorge" loading="lazy" decoding="async" class="shot-light w-full h-auto rounded-2xl border border-slate-800 shadow-2xl shadow-black/30 ">
+                </div>
+            </div>
+        </div>
+            </div>
+        </section>
+
+        <!-- ================= METHODEN ================= -->
+        <section id="methoden" class="scroll-mt-20 px-4 sm:px-6 py-16 border-t border-slate-800">
+            <div class="max-w-6xl mx-auto space-y-8">
+                <div class="max-w-2xl space-y-3">
+                    <div class="text-xs font-bold uppercase tracking-wider text-teal-400">Methoden</div>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Aufgebaut auf etablierten Ansätzen</h2>
+                    <p class="text-sm sm:text-base text-slate-300 leading-relaxed">AuraMind erfindet keine neuen Methoden, sondern macht bewährte Werkzeuge aus Psychotherapie und Psychiatrie im Alltag zugänglich.</p>
+                </div>
+                <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                <div class="text-2xl" aria-hidden="true">🧠</div>
+                <h3 class="text-sm font-bold text-white">Kognitive Verhaltenstherapie (KVT)</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">Gedanken, Gefühle und Verhalten hängen zusammen. Der Coach hilft, Grübelschleifen zu erkennen und mit kleinen, machbaren Schritten zu unterbrechen.</p>
+            </div>
+            <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                <div class="text-2xl" aria-hidden="true">🧊</div>
+                <h3 class="text-sm font-bold text-white">Dialektisch-Behaviorale Therapie (DBT)</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">Skills zur Stresstoleranz wie Kältereiz, TIPP und 5-4-3-2-1-Erdung – entwickelt für Momente extremer Anspannung.</p>
+            </div>
+            <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                <div class="text-2xl" aria-hidden="true">📈</div>
+                <h3 class="text-sm font-bold text-white">Life-Charting & Social Rhythm</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">Stimmung, Schlaf und Tagesrhythmus über Zeit festhalten. Regelmässigkeit stabilisiert, Abweichungen sind frühe Warnsignale.</p>
+            </div>
+            <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                <div class="text-2xl" aria-hidden="true">🌱</div>
+                <h3 class="text-sm font-bold text-white">Behavioral Activation</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">Handeln vor Motivation: winzige Aktivitäten planen und danach bewerten, wie viel Erfolg oder Freude sie gebracht haben.</p>
+            </div>
+            <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                <div class="text-2xl" aria-hidden="true">🛡️</div>
+                <h3 class="text-sm font-bold text-white">Safety Planning (Stanley-Brown)</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">Ein strukturierter Plan für Krisen, erstellt in ruhigen Zeiten – international etablierte Kurzintervention.</p>
+            </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= DATENSCHUTZ ================= -->
+        <section id="datenschutz" class="scroll-mt-20 px-4 sm:px-6 py-16 border-t border-slate-800 bg-slate-900/40">
+            <div class="max-w-6xl mx-auto space-y-8">
+                <div class="max-w-2xl space-y-3">
+                    <div class="text-xs font-bold uppercase tracking-wider text-teal-400">Datenschutz</div>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Deine Gesundheitsdaten gehören dir</h2>
+                    <p class="text-sm sm:text-base text-slate-300 leading-relaxed">Was du in AuraMind einträgst, ist sehr persönlich. Deshalb gelten klare Regeln – nach Schweizer Datenschutzgesetz und DSGVO.</p>
+                </div>
+                <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs sm:text-sm">
+                    <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1.5">
+                        <h3 class="font-bold text-white">🇨🇭 Gehostet in der Schweiz</h3>
+                        <p class="text-slate-400 leading-relaxed">App und Datenbank laufen bei einem Schweizer Hosting-Anbieter. Schriften und Bilder kommen vom eigenen Server.</p>
+                    </div>
+                    <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1.5">
+                        <h3 class="font-bold text-white">✋ Nur mit deiner Einwilligung</h3>
+                        <p class="text-slate-400 leading-relaxed">Gesundheitsdaten werden erst bearbeitet, wenn du bei der Registrierung ausdrücklich zustimmst.</p>
+                    </div>
+                    <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1.5">
+                        <h3 class="font-bold text-white">🚫 Keine Werbung, kein Verkauf</h3>
+                        <p class="text-slate-400 leading-relaxed">Deine Daten werden nicht verkauft und nicht für Werbung genutzt. Nutzungsstatistiken gibt es nur, wenn du sie erlaubst.</p>
+                    </div>
+                    <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1.5">
+                        <h3 class="font-bold text-white">🤖 KI mit Augenmass</h3>
+                        <p class="text-slate-400 leading-relaxed">Für den KI-Coach gehen nur die letzten Chat-Nachrichten und wenige Kontextangaben an Google Gemini – ohne Name, E-Mail und Notfallkontakt, nicht zum Training.</p>
+                    </div>
+                    <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1.5">
+                        <h3 class="font-bold text-white">🗑️ Jederzeit löschbar</h3>
+                        <p class="text-slate-400 leading-relaxed">Du kannst dein Konto selbst löschen. Alle Daten werden dabei sofort und endgültig entfernt.</p>
+                    </div>
+                    <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1.5">
+                        <h3 class="font-bold text-white">🔐 Sicher übertragen</h3>
+                        <p class="text-slate-400 leading-relaxed">Verschlüsselte Verbindung, Passwörter nur als Hash gespeichert, Schutz vor Brute-Force-Anmeldeversuchen.</p>
+                    </div>
+                </div>
+                <a href="/app/#datenschutz" class="inline-block text-sm font-bold text-teal-300 hover:text-teal-200 underline">Vollständige Datenschutzerklärung lesen →</a>
+            </div>
+        </section>
+
+        <!-- ================= GRENZEN ================= -->
+        <section class="px-4 sm:px-6 py-16 border-t border-slate-800">
+            <div class="max-w-3xl mx-auto p-6 sm:p-8 rounded-2xl bg-rose-950/40 border border-rose-900/60 space-y-3">
+                <h2 class="text-lg sm:text-xl font-bold text-white">Was AuraMind nicht ist</h2>
+                <p class="text-sm text-slate-300 leading-relaxed">AuraMind ist ein Selbsthilfe-Werkzeug. Es stellt keine Diagnosen, ersetzt keine ärztliche oder psychotherapeutische Behandlung und ändert nichts an deiner Medikation. Die Antworten des Coachs – insbesondere die KI-generierten – können Fehler enthalten.</p>
+                <p class="text-sm text-slate-300 leading-relaxed"><strong class="text-rose-300">Wenn du in Gefahr bist</strong> oder daran denkst, dir etwas anzutun: Ruf sofort <a href="tel:144" class="font-bold underline">144</a> bzw. <a href="tel:112" class="font-bold underline">112</a> an oder sprich rund um die Uhr anonym mit der Dargebotenen Hand unter <a href="tel:143" class="font-bold underline">143</a> (Schweiz) bzw. der TelefonSeelsorge unter <a href="tel:08001110111" class="font-bold underline">0800 111 0 111</a> (Deutschland).</p>
+            </div>
+        </section>
+
+        <!-- ================= FAQ ================= -->
+        <section id="faq" class="scroll-mt-20 px-4 sm:px-6 py-16 border-t border-slate-800 bg-slate-900/40">
+            <div class="max-w-3xl mx-auto space-y-8">
+                <div class="space-y-3">
+                    <div class="text-xs font-bold uppercase tracking-wider text-teal-400">FAQ</div>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Häufige Fragen</h2>
+                </div>
+                <div class="space-y-3">
+            <details class="group p-5 rounded-2xl bg-slate-900 border border-slate-800">
+                <summary class="flex items-center justify-between gap-4 cursor-pointer list-none text-sm font-bold text-white">
+                    <span>Brauche ich eine Diagnose, um AuraMind zu nutzen?</span>
+                    <span class="text-teal-400 transition group-open:rotate-45 text-lg leading-none" aria-hidden="true">＋</span>
+                </summary>
+                <p class="pt-3 text-xs sm:text-sm text-slate-300 leading-relaxed">Nein. Der Check-in fragt nach konkreten Alltagssignalen – Schlaf, Energie, Gedanken, Verhalten – und nicht nach Diagnosen. AuraMind richtet sich an alle, die starke Stimmungsschwankungen, Phasen von Übererregung, Erschöpfung oder Mischzustände kennen.</p>
+            </details>
+            <details class="group p-5 rounded-2xl bg-slate-900 border border-slate-800">
+                <summary class="flex items-center justify-between gap-4 cursor-pointer list-none text-sm font-bold text-white">
+                    <span>Ersetzt AuraMind eine Therapie?</span>
+                    <span class="text-teal-400 transition group-open:rotate-45 text-lg leading-none" aria-hidden="true">＋</span>
+                </summary>
+                <p class="pt-3 text-xs sm:text-sm text-slate-300 leading-relaxed">Nein. AuraMind ist ein Selbsthilfe-Werkzeug für den Alltag zwischen den Terminen. Es stellt keine Diagnosen und ersetzt weder ärztliche noch psychotherapeutische Behandlung oder Medikation. Im Gegenteil: Das Tracking kann eine gute Grundlage für Gespräche mit deiner Fachperson sein.</p>
+            </details>
+            <details class="group p-5 rounded-2xl bg-slate-900 border border-slate-800">
+                <summary class="flex items-center justify-between gap-4 cursor-pointer list-none text-sm font-bold text-white">
+                    <span>Wer kann meine Daten sehen?</span>
+                    <span class="text-teal-400 transition group-open:rotate-45 text-lg leading-none" aria-hidden="true">＋</span>
+                </summary>
+                <p class="pt-3 text-xs sm:text-sm text-slate-300 leading-relaxed">Deine Daten liegen auf Servern in der Schweiz und sind an dein Konto gebunden. Wir verkaufen keine Daten und zeigen keine Werbung. Ist der KI-Coach aktiv, werden die letzten Chat-Nachrichten ohne Name, E-Mail und Notfallkontakt an Google Gemini (kostenpflichtige Version, kein Training mit deinen Daten) übermittelt. Alle Details stehen in der Datenschutzerklärung.</p>
+            </details>
+            <details class="group p-5 rounded-2xl bg-slate-900 border border-slate-800">
+                <summary class="flex items-center justify-between gap-4 cursor-pointer list-none text-sm font-bold text-white">
+                    <span>Funktioniert AuraMind auch ohne KI?</span>
+                    <span class="text-teal-400 transition group-open:rotate-45 text-lg leading-none" aria-hidden="true">＋</span>
+                </summary>
+                <p class="pt-3 text-xs sm:text-sm text-slate-300 leading-relaxed">Ja. Ohne KI antwortet eine lokale, regelbasierte KVT-Engine direkt auf unserem Server – dabei werden keine Daten an Dritte übermittelt.</p>
+            </details>
+            <details class="group p-5 rounded-2xl bg-slate-900 border border-slate-800">
+                <summary class="flex items-center justify-between gap-4 cursor-pointer list-none text-sm font-bold text-white">
+                    <span>Muss ich etwas installieren?</span>
+                    <span class="text-teal-400 transition group-open:rotate-45 text-lg leading-none" aria-hidden="true">＋</span>
+                </summary>
+                <p class="pt-3 text-xs sm:text-sm text-slate-300 leading-relaxed">Nein. AuraMind läuft im Browser auf Smartphone, Tablet und Computer. Ein Konto mit E-Mail und Passwort genügt.</p>
+            </details>
+            <details class="group p-5 rounded-2xl bg-slate-900 border border-slate-800">
+                <summary class="flex items-center justify-between gap-4 cursor-pointer list-none text-sm font-bold text-white">
+                    <span>Kann ich mein Konto wieder löschen?</span>
+                    <span class="text-teal-400 transition group-open:rotate-45 text-lg leading-none" aria-hidden="true">＋</span>
+                </summary>
+                <p class="pt-3 text-xs sm:text-sm text-slate-300 leading-relaxed">Ja, jederzeit selbst unter Profil → Konto löschen. Dabei werden alle deine Daten – Sitzungen, Chatverläufe, Check-ins, Aktivitäten und Sicherheitsplan – sofort und endgültig entfernt.</p>
+            </details>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= CTA ================= -->
+        <section class="px-4 sm:px-6 py-20 border-t border-slate-800">
+            <div class="max-w-3xl mx-auto text-center space-y-5">
+                <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Bereit für den ersten Check-in?</h2>
+                <p class="text-sm sm:text-base text-slate-300 leading-relaxed">Konto anlegen, vier Fragen beantworten, loslegen. Am besten probierst du AuraMind zum ersten Mal in einer ruhigen Phase aus – und füllst gleich deinen Sicherheitsplan aus.</p>
+                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                    <a href="/app/#register" data-cta="register" class="inline-flex justify-center px-6 py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-sm transition shadow-lg shadow-teal-500/20">Konto erstellen →</a>
+                    <a href="/app/" data-cta="login" class="inline-flex justify-center px-6 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-white font-bold text-sm transition">Ich habe schon ein Konto</a>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ================= FOOTER ================= -->
+    <footer class="border-t border-slate-800 bg-slate-900/60 px-4 py-4 sm:px-6">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
+            <span>© <span id="footer-year">2026</span> AuraMind</span>
+            <nav class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+                <a href="/app/#impressum" class="hover:text-teal-300 transition">Impressum</a>
+                <a href="/app/#datenschutz" class="hover:text-teal-300 transition">Datenschutz</a>
+                <a href="/app/#kontakt" class="hover:text-teal-300 transition">Kontakt</a>
+                <button onclick="consent.openSettings()" class="hover:text-teal-300 transition">Cookie-Einstellungen</button>
+            </nav>
+        </div>
+    </footer>
+
+    <!-- ================= COOKIE-BANNER ================= -->
+    <div id="cookie-banner" role="dialog" aria-labelledby="cookie-banner-title" aria-describedby="cookie-banner-text" class="fixed inset-x-0 bottom-0 z-40 hidden justify-center p-4 pointer-events-none">
+        <div class="pointer-events-auto w-full max-w-2xl rounded-2xl bg-slate-900 border border-slate-700 p-5 shadow-2xl space-y-3">
+            <div class="flex items-center gap-2 text-teal-400">
+                <span>🍪</span>
+                <h3 id="cookie-banner-title" class="text-sm font-bold text-white">Darf AuraMind anonyme Nutzungsstatistiken erheben?</h3>
+            </div>
+            <p id="cookie-banner-text" class="text-xs text-slate-300 leading-relaxed">
+                Mit deiner Zustimmung nutzen wir <strong>Google Analytics</strong>, um zu verstehen, wie die App genutzt wird. Dabei werden Cookies gesetzt und Nutzungsdaten (u.&nbsp;a. IP-Adresse, Geräte- und Browserinfos, aufgerufene Seiten) an Google übermittelt, auch in die USA. Deine Gesundheitsdaten und Chat-Inhalte werden <strong>nicht</strong> an Google Analytics gesendet.
+                Die Einwilligung ist freiwillig und jederzeit über «Cookie-Einstellungen» im Footer widerrufbar. Technisch notwendige Speicherungen (Anmelde-Session, Hell/Dunkel, diese Auswahl) sind immer aktiv.
+                <a href="/app/#datenschutz" class="text-teal-300 underline hover:text-teal-200">Mehr in der Datenschutzerklärung</a>
+            </p>
+            <div class="flex flex-col sm:flex-row gap-2 sm:justify-end">
+                <button type="button" onclick="consent.reject()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 text-xs font-bold transition">Nur notwendige</button>
+                <button type="button" onclick="consent.accept()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 text-xs font-bold transition">Statistik erlauben</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module" src="/src/landing.js"></script>
+</body>
+</html>
